@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"go-campaign.com/cmd/api/v1/auth"
@@ -15,6 +16,8 @@ import (
 
 func main() {
 	app := fiber.New()
+
+	app.Use(logger.New())
 
 	err := godotenv.Load(".env")
 
