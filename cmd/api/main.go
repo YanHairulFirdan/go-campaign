@@ -14,17 +14,11 @@ import (
 	"go-campaign.com/pkg/validation"
 )
 
-func main() {
-	app := fiber.New()
+type App struct {
+	DB *sql.DB
+}
 
-	app.Use(logger.New())
-
-	err := godotenv.Load(".env")
-
-	if err != nil {
-		panic(fmt.Sprintf("Error loading .env file: %v", err))
-	}
-
+func newApp() *App {
 	dbConnectionString := os.Getenv("DATABASE_CONNECTION")
 
 	db, err := sql.Open("postgres", dbConnectionString)
@@ -34,11 +28,27 @@ func main() {
 	}
 	err = validation.Init(db)
 
-	defer db.Close()
-
 	if err != nil {
 		panic(fmt.Sprintf("Error initializing validation: %v", err))
 	}
+
+	return &App{
+		DB: db,
+	}
+}
+
+func main() {
+	app := fiber.New()
+
+	app.Use(logger.New())
+
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		panic("Error loading .env file")
+	}
+
+	App := newApp()
 
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
@@ -48,7 +58,7 @@ func main() {
 
 	authV1 := apiV1.Group("/auth")
 
-	userRepo := repository.NewRepository(db)
+	userRepo := repository.NewRepository(App.DB)
 	authV1handler := auth.NewHandler(userRepo)
 
 	authV1.Post("/register", authV1handler.Register)
@@ -60,6 +70,8 @@ func main() {
 	}
 
 	err = app.Listen(port)
+
+	defer App.DB.Close()
 
 	if err != nil {
 		panic(err)
