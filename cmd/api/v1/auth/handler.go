@@ -28,7 +28,7 @@ func (h *handler) Register(c *fiber.Ctx) error {
 		)
 	}
 
-	validationErrors, err := validation.Validate(req)
+	validationErrors, err := validation.Validate(req, nil)
 
 	if err != nil {
 		return c.Status(500).JSON(
