@@ -14,9 +14,17 @@ import (
 
 type errorInputMap = map[string]string
 
+type validationException struct {
+	Column string
+	Value  any
+}
+
+type ValidationExceptions map[string]validationException
+
 var (
-	validate   *validator.Validate
-	translator ut.Translator
+	validate                  *validator.Validate
+	translator                ut.Translator
+	validationFieldExceptions ValidationExceptions
 )
 
 func Init(db *sql.DB) error {
@@ -51,7 +59,9 @@ func registerCustomRules(db *sql.DB) {
 	})
 }
 
-func Validate[T any](request T) ([]errorInputMap, error) {
+func Validate[T any](request T, incomingExceptions ValidationExceptions) ([]errorInputMap, error) {
+	validationFieldExceptions = incomingExceptions
+
 	err := validate.Struct(request)
 
 	if err != nil {
