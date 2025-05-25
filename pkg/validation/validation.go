@@ -1,7 +1,9 @@
 package validation
 
 import (
+	"database/sql"
 	"errors"
+	"fmt"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
@@ -12,16 +14,45 @@ import (
 
 type errorInputMap = map[string]string
 
-func Validate[T any](request T) ([]errorInputMap, error) {
-	validate := validator.New()
+var (
+	validate   *validator.Validate
+	translator ut.Translator
+)
 
-	translator, err := prepareTranslator(validate)
+func Init(db *sql.DB) error {
+	validate = validator.New()
+
+	err := prepareTranslator()
 
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	err = validate.Struct(request)
+	registerCustomRules(db)
+
+	return nil
+}
+
+func registerCustomRules(db *sql.DB) {
+	// Here you can register custom validation rules if needed
+	// For example:
+	// validate.RegisterValidation("unique", UniqueRule(db))
+	// This is where you would add any custom validation logic
+	// such as checking for unique values in the database.
+
+	validate.RegisterValidation("unique", uniqueRule(db))
+
+	validate.RegisterTranslation("unique", translator, func(ut ut.Translator) error {
+		return ut.Add("unique", "{0} must be unique", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+		// Return a custom error message instead of calling fe.Translate(ut)
+		fieldName := fe.Field() // Get the field name
+		return fmt.Sprintf("%s must be unique", fieldName)
+	})
+}
+
+func Validate[T any](request T) ([]errorInputMap, error) {
+	err := validate.Struct(request)
 
 	if err != nil {
 		return mappingErrors(err, translator), nil
@@ -30,21 +61,22 @@ func Validate[T any](request T) ([]errorInputMap, error) {
 	return nil, nil
 }
 
-func prepareTranslator(validate *validator.Validate) (ut.Translator, error) {
+func prepareTranslator() error {
 	english := en.New()
 	uni := ut.New(english, english)
 
-	translator, found := uni.GetTranslator("en")
+	var found bool
+	translator, found = uni.GetTranslator("en") // Assign to the global translator variable
 
 	if !found {
-		return nil, errors.New("translator not found")
+		return errors.New("translator not found")
 	}
 
 	if err := enTranslations.RegisterDefaultTranslations(validate, translator); err != nil {
-		return nil, errors.New("failed to register translations: " + err.Error())
+		return fmt.Errorf("failed to register translations: %w", err)
 	}
 
-	return translator, nil
+	return nil
 }
 
 func mappingErrors(err error, translator ut.Translator) []errorInputMap {
