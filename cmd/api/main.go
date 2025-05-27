@@ -78,6 +78,7 @@ func main() {
 	})
 
 	authV1.Post("/register", authV1handler.Register)
+	authV1.Post("/login", authV1handler.Login)
 
 	port := os.Getenv("APP_PORT")
 
