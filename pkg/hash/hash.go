@@ -18,3 +18,16 @@ func Password(password string) (string, error) {
 
 	return string(hashedPassword), nil
 }
+
+func ComparePassword(hashedPassword, password string) (bool, error) {
+	if hashedPassword == "" || password == "" {
+		return false, errors.New("hashed password and password cannot be empty")
+	}
+
+	err := bcrypt.CompareHashAndPassword([]byte(hashedPassword), []byte(password))
+	if err != nil {
+		return false, errors.New("password does not match")
+	}
+
+	return true, nil
+}

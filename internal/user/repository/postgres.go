@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"time"
 
 	"go-campaign.com/internal/user"
@@ -29,4 +30,29 @@ func (r *PostgresRepository) Create(user user.User) (user.User, error) {
 	}
 
 	return user, nil
+}
+
+func (r *PostgresRepository) FindBy(column string, value any) (user.User, error) {
+	query := `SELECT id, name, email, password, created_at, updated_at 
+	          FROM users WHERE ` + column + ` = $1`
+
+	var u user.User
+
+	err := r.connection.QueryRow(query, value).Scan(
+		&u.ID,
+		&u.Name,
+		&u.Email,
+		&u.Password,
+		&u.CreatedAt,
+		&u.UpdatedAt,
+	)
+
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return user.User{}, errors.New("user not found") // No user found
+		}
+		return user.User{}, err // Other error
+	}
+
+	return u, nil
 }
