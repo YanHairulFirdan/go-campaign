@@ -5,6 +5,7 @@ import (
 	"go-campaign.com/cmd/api/response"
 	"go-campaign.com/internal/user"
 	"go-campaign.com/internal/user/repository"
+	"go-campaign.com/pkg/auth"
 	"go-campaign.com/pkg/hash"
 	"go-campaign.com/pkg/validation"
 )
@@ -63,5 +64,20 @@ func (h *handler) Register(c *fiber.Ctx) error {
 		)
 	}
 
-	return c.Status(200).JSON(response.NewResponse("success", "User registered successfully", nil))
+	jwtToken, err := auth.GenerateToken(user.ID)
+
+	if err != nil {
+		return c.Status(500).JSON(
+			response.NewErrorResponse("error", "Error when generating token", err.Error()),
+		)
+	}
+
+	return c.Status(200).JSON(
+		response.NewResponse(
+			"success",
+			"User registered successfully",
+			map[string]string{
+				"token": jwtToken,
+			}),
+	)
 }
