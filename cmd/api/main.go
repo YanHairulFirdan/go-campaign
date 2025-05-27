@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
+	"go-campaign.com/cmd/api/middleware"
 	"go-campaign.com/cmd/api/v1/auth"
 	"go-campaign.com/internal/user/repository"
 	"go-campaign.com/pkg/validation"
@@ -60,6 +61,21 @@ func main() {
 
 	userRepo := repository.NewRepository(App.DB)
 	authV1handler := auth.NewHandler(userRepo)
+
+	apiV1.Get("/protected", middleware.Protected(), func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"message": "This is a protected route",
+			"user":    c.Locals("user"),
+		})
+	})
+
+	// open
+	apiV1.Get("/open", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"message": "This is an open route",
+			"status":  "success",
+		})
+	})
 
 	authV1.Post("/register", authV1handler.Register)
 
