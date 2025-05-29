@@ -3,6 +3,8 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"fmt"
+	"log"
 	"time"
 
 	"go-campaign.com/internal/campaign"
@@ -164,4 +166,65 @@ func (r *PostgresRepository) Update(c campaign.Campaign) (campaign.Campaign, err
 	}
 
 	return c, nil // Return the updated campaign
+}
+
+func (r *PostgresRepository) Paginate(filters Filters, page, perPage int) ([]campaign.Campaign, error) {
+	offset := (page - 1) * perPage
+	filter, args := filters.ToSQL()
+
+	var rows *sql.Rows
+	var err error
+
+	if filter != "" {
+		argslen := len(args)
+		query := fmt.Sprintf(
+			"SELECT id, user_id, title, description, slug, target_amount, current_amount, start_date, end_date, status, created_at, updated_at, deleted_at FROM campaigns %s ORDER BY created_at DESC LIMIT %s OFFSET %s",
+			filter,
+			`$`+fmt.Sprintf("%d", argslen+1),
+			`$`+fmt.Sprint(argslen+2),
+		)
+
+		log.Println(query)
+
+		rows, err = r.connection.Query(query, append(args, perPage, offset)...)
+		if err != nil {
+			return nil, err // Return error if query fails
+		}
+	} else {
+		query := `SELECT id, user_id, title, description, slug, target_amount, current_amount, start_date, end_date, status, created_at, updated_at, deleted_at
+		FROM campaigns ORDER BY created_at DESC LIMIT $1 OFFSET $2`
+
+		rows, err = r.connection.Query(query, perPage, offset)
+		if err != nil {
+			return nil, err // Return error if query fails
+		}
+	}
+
+	defer rows.Close()
+
+	var campaigns []campaign.Campaign
+	for rows.Next() {
+		var c campaign.Campaign
+		err := rows.Scan(
+			&c.ID,
+			&c.UserID,
+			&c.Title,
+			&c.Description,
+			&c.Slug,
+			&c.TargetAmount,
+			&c.CurrentAmount,
+			&c.StartDate,
+			&c.EndDate,
+			&c.Status,
+			&c.CreatedAt,
+			&c.UpdatedAt,
+			&c.DeletedAt,
+		)
+		if err != nil {
+			return nil, err // Return error if scanning fails
+		}
+		campaigns = append(campaigns, c)
+	}
+
+	return campaigns, nil // Return the list of campaigns
 }

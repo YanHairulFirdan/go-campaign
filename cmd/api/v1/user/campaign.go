@@ -1,6 +1,7 @@
 package user
 
 import (
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -39,7 +40,35 @@ func (h *handler) Index(c *fiber.Ctx) error {
 		)
 	}
 
-	campaigns, err := h.r.GetCampaignsFromUser(userID)
+	page, err := strconv.Atoi(c.Query("page", "1"))
+
+	if err != nil || page < 1 {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Invalid page number",
+				"Page number must be a positive integer",
+			),
+		)
+	}
+	perPage, err := strconv.Atoi(c.Query("per_page", "10"))
+	if err != nil || perPage < 1 {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Invalid per_page number",
+				"Per page number must be a positive integer",
+			),
+		)
+	}
+
+	campaigns, err := h.r.Paginate(repository.Filters{
+		{
+			Column:   "user_id",
+			Value:    userID,
+			Operator: "=",
+		},
+	}, page, perPage)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(
