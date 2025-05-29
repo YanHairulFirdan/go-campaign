@@ -1,7 +1,6 @@
 package validation
 
 import (
-	"database/sql"
 	"errors"
 	"fmt"
 
@@ -25,9 +24,10 @@ var (
 	validate                  *validator.Validate
 	translator                ut.Translator
 	validationFieldExceptions ValidationExceptions
+	databaseRepository        DatabaseValidationRepository
 )
 
-func Init(db *sql.DB) error {
+func Init(db DatabaseValidationRepository) error {
 	validate = validator.New()
 
 	err := prepareTranslator()
@@ -36,19 +36,20 @@ func Init(db *sql.DB) error {
 		return err
 	}
 
-	registerCustomRules(db)
+	registerCustomRules()
+	databaseRepository = db
 
 	return nil
 }
 
-func registerCustomRules(db *sql.DB) {
+func registerCustomRules() {
 	// Here you can register custom validation rules if needed
 	// For example:
 	// validate.RegisterValidation("unique", UniqueRule(db))
 	// This is where you would add any custom validation logic
 	// such as checking for unique values in the database.
 
-	validate.RegisterValidation("unique", uniqueRule(db))
+	validate.RegisterValidation("unique", uniqueRule)
 
 	validate.RegisterTranslation("unique", translator, func(ut ut.Translator) error {
 		return ut.Add("unique", "{0} must be unique", true)
