@@ -14,6 +14,7 @@ import (
 	"go-campaign.com/cmd/api/v1/auth"
 	"go-campaign.com/cmd/api/v1/user"
 	campaignRepo "go-campaign.com/internal/campaign/repository"
+	validationRepo "go-campaign.com/internal/shared/repository"
 	"go-campaign.com/internal/user/repository"
 	authPkg "go-campaign.com/pkg/auth"
 	"go-campaign.com/pkg/validation"
@@ -31,7 +32,10 @@ func newApp() *App {
 	if err != nil {
 		panic(fmt.Sprintf("Error connecting to the database: %v", err))
 	}
-	err = validation.Init(db)
+
+	validationRepository := validationRepo.NewDatabaseValidationRepository(db)
+
+	err = validation.Init(validationRepository)
 
 	if err != nil {
 		panic(fmt.Sprintf("Error initializing validation: %v", err))
