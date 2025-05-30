@@ -3,7 +3,7 @@ package repository
 import (
 	"database/sql"
 
-	"go-campaign.com/internal/user"
+	"go-campaign.com/internal/user/entities"
 )
 
 type Filter struct {
@@ -15,8 +15,8 @@ type Filter struct {
 type Filters []Filter
 
 type Repository interface {
-	Create(user.User) (user.User, error)
-	FindBy(column string, value any) (user.User, error)
+	Create(entities.User) (entities.User, error)
+	FindBy(column string, value any) (entities.User, error)
 }
 
 func NewRepository(connection *sql.DB) Repository {

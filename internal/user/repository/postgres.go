@@ -5,7 +5,7 @@ import (
 	"errors"
 	"time"
 
-	"go-campaign.com/internal/user"
+	"go-campaign.com/internal/user/entities"
 )
 
 type PostgresRepository struct {
@@ -18,7 +18,7 @@ func newPostgresRepository(connection *sql.DB) *PostgresRepository {
 	}
 }
 
-func (r *PostgresRepository) Create(user user.User) (user.User, error) {
+func (r *PostgresRepository) Create(user entities.User) (entities.User, error) {
 	query := `INSERT INTO users (name, email, password, created_at, updated_at) 
 	          VALUES ($1, $2, $3, $4, $5) RETURNING id`
 	user.CreatedAt = time.Now().Format(time.RFC3339)
@@ -32,11 +32,11 @@ func (r *PostgresRepository) Create(user user.User) (user.User, error) {
 	return user, nil
 }
 
-func (r *PostgresRepository) FindBy(column string, value any) (user.User, error) {
+func (r *PostgresRepository) FindBy(column string, value any) (entities.User, error) {
 	query := `SELECT id, name, email, password, created_at, updated_at 
 	          FROM users WHERE ` + column + ` = $1`
 
-	var u user.User
+	var u entities.User
 
 	err := r.connection.QueryRow(query, value).Scan(
 		&u.ID,
@@ -49,9 +49,9 @@ func (r *PostgresRepository) FindBy(column string, value any) (user.User, error)
 
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return user.User{}, errors.New("user not found") // No user found
+			return entities.User{}, errors.New("user not found") // No user found
 		}
-		return user.User{}, err // Other error
+		return entities.User{}, err // Other error
 	}
 
 	return u, nil
