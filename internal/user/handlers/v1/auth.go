@@ -1,9 +1,9 @@
-package auth
+package v1
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"go-campaign.com/cmd/api/response"
-	"go-campaign.com/internal/user"
+	"go-campaign.com/internal/shared/http/response"
+	"go-campaign.com/internal/user/entities"
 	"go-campaign.com/internal/user/repository"
 	"go-campaign.com/pkg/auth"
 	"go-campaign.com/pkg/hash"
@@ -50,7 +50,7 @@ func (h *handler) Register(c *fiber.Ctx) error {
 		)
 	}
 
-	user := user.User{
+	user := entities.User{
 		Name:     req.Name,
 		Email:    req.Email,
 		Password: password,

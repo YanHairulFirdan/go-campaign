@@ -1,6 +1,6 @@
-package user
+package v1
 
-import "go-campaign.com/internal/campaign"
+import "go-campaign.com/internal/campaign/entities"
 
 type ListCampaign struct {
 	ID            int     `json:"id"`
@@ -14,7 +14,7 @@ type ListCampaign struct {
 	Status        int     `json:"status"` // 0: Draft, 1: Active, 2: Completed, 3: Cancelled
 }
 
-func listCampaignCollection(cs []campaign.Campaign) []ListCampaign {
+func listCampaignCollection(cs []entities.Campaign) []ListCampaign {
 	var campaigns []ListCampaign
 	for _, c := range cs {
 		campaigns = append(campaigns, ListCampaign{

@@ -1,4 +1,4 @@
-package user
+package v1
 
 import (
 	"strconv"
@@ -6,9 +6,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	"go-campaign.com/cmd/api/response"
-	"go-campaign.com/internal/campaign"
+	"go-campaign.com/internal/campaign/entities"
 	"go-campaign.com/internal/campaign/repository"
+	"go-campaign.com/internal/shared/http/response"
 	"go-campaign.com/pkg/auth"
 	"go-campaign.com/pkg/validation"
 )
@@ -163,7 +163,7 @@ func (h *handler) Create(c *fiber.Ctx) error {
 		)
 	}
 
-	campaign, err := h.r.Create(campaign.Campaign{
+	campaign, err := h.r.Create(entities.Campaign{
 		UserID:        userID,
 		Title:         req.Title,
 		Description:   req.Description,
@@ -172,7 +172,7 @@ func (h *handler) Create(c *fiber.Ctx) error {
 		CurrentAmount: 0, // Initial current amount is 0
 		StartDate:     startDate,
 		EndDate:       endDate,
-		Status:        campaign.Status(req.Status),
+		Status:        entities.Status(req.Status),
 	})
 
 	if err != nil {
@@ -359,7 +359,7 @@ func (h *handler) Update(c *fiber.Ctx) error {
 		)
 	}
 
-	cp.Status = campaign.Status(req.Status)
+	cp.Status = entities.Status(req.Status)
 
 	updatedCampaign, err := h.r.Update(cp)
 	if err != nil {

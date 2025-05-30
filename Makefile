@@ -10,4 +10,4 @@ migrate-create:
 migrate-force:
 	migrate -database=$(MIGRATION_CONNECTION) -path=$(MIGRATION_PATH) force $(VERSION)
 run-app:
-	go run ./cmd/api/main.go
+	go run ./main.go

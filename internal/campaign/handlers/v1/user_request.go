@@ -1,4 +1,4 @@
-package user
+package v1
 
 type createCampaignRequest struct {
 	Title        string  `json:"title" validate:"required,min=3,max=100"`
