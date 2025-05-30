@@ -7,7 +7,7 @@ import (
 	"log"
 	"time"
 
-	"go-campaign.com/internal/campaign"
+	"go-campaign.com/internal/campaign/entities"
 )
 
 type PostgresRepository struct {
@@ -20,7 +20,7 @@ func newPostgresRepository(connection *sql.DB) *PostgresRepository {
 	}
 }
 
-func (r *PostgresRepository) Create(c campaign.Campaign) (campaign.Campaign, error) {
+func (r *PostgresRepository) Create(c entities.Campaign) (entities.Campaign, error) {
 	query := `INSERT INTO 
 		campaigns (user_id, title, description, slug, target_amount, current_amount, start_date, end_date, status, created_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
@@ -44,17 +44,17 @@ func (r *PostgresRepository) Create(c campaign.Campaign) (campaign.Campaign, err
 	).Scan(&c.ID, &c.CreatedAt, &c.UpdatedAt)
 
 	if err != nil {
-		return campaign.Campaign{}, err // Return error if insertion fails
+		return entities.Campaign{}, err // Return error if insertion fails
 	}
 
 	return c, nil // Return the created campaign
 }
 
-func (r *PostgresRepository) FindBy(column string, value any) (campaign.Campaign, error) {
+func (r *PostgresRepository) FindBy(column string, value any) (entities.Campaign, error) {
 	query := `SELECT id, user_id, title, description, slug, target_amount, current_amount, start_date, end_date, status, created_at, updated_at, deleted_at
 		FROM campaigns WHERE ` + column + ` = $1`
 
-	var c campaign.Campaign
+	var c entities.Campaign
 	err := r.connection.QueryRow(query, value).Scan(
 		&c.ID,
 		&c.UserID,
@@ -73,15 +73,15 @@ func (r *PostgresRepository) FindBy(column string, value any) (campaign.Campaign
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return campaign.Campaign{}, errors.New("campaign not found")
+			return entities.Campaign{}, errors.New("campaign not found")
 		}
-		return campaign.Campaign{}, err // Return error if query fails
+		return entities.Campaign{}, err // Return error if query fails
 	}
 
 	return c, nil
 }
 
-func (r *PostgresRepository) GetCampaignsFromUser(userID int) ([]campaign.Campaign, error) {
+func (r *PostgresRepository) GetCampaignsFromUser(userID int) ([]entities.Campaign, error) {
 	query := `SELECT id, user_id, title, description, slug, target_amount, current_amount, start_date, end_date, status, created_at, updated_at, deleted_at
 		FROM campaigns WHERE user_id = $1 ORDER BY created_at DESC`
 	rows, err := r.connection.Query(query, userID)
@@ -90,9 +90,9 @@ func (r *PostgresRepository) GetCampaignsFromUser(userID int) ([]campaign.Campai
 	}
 	defer rows.Close()
 
-	var campaigns []campaign.Campaign
+	var campaigns []entities.Campaign
 	for rows.Next() {
-		var c campaign.Campaign
+		var c entities.Campaign
 		err := rows.Scan(
 			&c.ID,
 			&c.UserID,
@@ -117,7 +117,7 @@ func (r *PostgresRepository) GetCampaignsFromUser(userID int) ([]campaign.Campai
 	return campaigns, nil // Return the list of campaigns
 }
 
-func (r *PostgresRepository) Update(c campaign.Campaign) (campaign.Campaign, error) {
+func (r *PostgresRepository) Update(c entities.Campaign) (entities.Campaign, error) {
 	query := `
 	UPDATE campaigns SET
 	 title = $1,
@@ -162,13 +162,13 @@ func (r *PostgresRepository) Update(c campaign.Campaign) (campaign.Campaign, err
 		&c.DeletedAt,
 	)
 	if err != nil {
-		return campaign.Campaign{}, err // Return error if update fails
+		return entities.Campaign{}, err // Return error if update fails
 	}
 
 	return c, nil // Return the updated campaign
 }
 
-func (r *PostgresRepository) Paginate(filters Filters, page, perPage int) ([]campaign.Campaign, error) {
+func (r *PostgresRepository) Paginate(filters Filters, page, perPage int) ([]entities.Campaign, error) {
 	offset := (page - 1) * perPage
 	filter, args := filters.ToSQL()
 
@@ -202,9 +202,9 @@ func (r *PostgresRepository) Paginate(filters Filters, page, perPage int) ([]cam
 
 	defer rows.Close()
 
-	var campaigns []campaign.Campaign
+	var campaigns []entities.Campaign
 	for rows.Next() {
-		var c campaign.Campaign
+		var c entities.Campaign
 		err := rows.Scan(
 			&c.ID,
 			&c.UserID,

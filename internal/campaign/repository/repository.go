@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	"go-campaign.com/internal/campaign"
+	"go-campaign.com/internal/campaign/entities"
 )
 
 type Filter struct {
@@ -45,11 +45,11 @@ func (f Filters) ToSQL() (string, []any) {
 }
 
 type Repository interface {
-	Paginate(filters Filters, page, perPage int) ([]campaign.Campaign, error)
-	Create(campaign.Campaign) (campaign.Campaign, error)
-	FindBy(column string, value any) (campaign.Campaign, error)
-	GetCampaignsFromUser(userID int) ([]campaign.Campaign, error)
-	Update(campaign.Campaign) (campaign.Campaign, error)
+	Paginate(filters Filters, page, perPage int) ([]entities.Campaign, error)
+	Create(entities.Campaign) (entities.Campaign, error)
+	FindBy(column string, value any) (entities.Campaign, error)
+	GetCampaignsFromUser(userID int) ([]entities.Campaign, error)
+	Update(entities.Campaign) (entities.Campaign, error)
 }
 
 func NewRepository(connection *sql.DB) Repository {
