@@ -6,9 +6,9 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
-	"go-campaign.com/cmd/api/response"
 	"go-campaign.com/internal/campaign/entities"
 	"go-campaign.com/internal/campaign/repository"
+	"go-campaign.com/internal/shared/http/response"
 	"go-campaign.com/pkg/auth"
 	"go-campaign.com/pkg/validation"
 )
