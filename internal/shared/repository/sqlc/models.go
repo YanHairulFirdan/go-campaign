@@ -10,19 +10,19 @@ import (
 )
 
 type Campaign struct {
-	ID            int32          `json:"id"`
-	Title         string         `json:"title"`
-	Description   sql.NullString `json:"description"`
-	Slug          string         `json:"slug"`
-	UserID        int32          `json:"user_id"`
-	TargetAmount  string         `json:"target_amount"`
-	CurrentAmount sql.NullString `json:"current_amount"`
-	StartDate     time.Time      `json:"start_date"`
-	EndDate       time.Time      `json:"end_date"`
-	Status        int32          `json:"status"`
-	CreatedAt     sql.NullTime   `json:"created_at"`
-	UpdatedAt     sql.NullTime   `json:"updated_at"`
-	DeletedAt     sql.NullTime   `json:"deleted_at"`
+	ID            int32        `json:"id"`
+	Title         string       `json:"title"`
+	Description   *string      `json:"description"`
+	Slug          string       `json:"slug"`
+	UserID        int32        `json:"user_id"`
+	TargetAmount  string       `json:"target_amount"`
+	CurrentAmount *float32     `json:"current_amount"`
+	StartDate     time.Time    `json:"start_date"`
+	EndDate       time.Time    `json:"end_date"`
+	Status        int32        `json:"status"`
+	CreatedAt     sql.NullTime `json:"created_at"`
+	UpdatedAt     sql.NullTime `json:"updated_at"`
+	DeletedAt     sql.NullTime `json:"deleted_at"`
 }
 
 type User struct {
