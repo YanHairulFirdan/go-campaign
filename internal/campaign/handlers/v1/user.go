@@ -7,20 +7,20 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"go-campaign.com/internal/campaign/entities"
-	"go-campaign.com/internal/campaign/repository"
 	"go-campaign.com/internal/shared/http/response"
+	"go-campaign.com/internal/shared/repository/sqlc"
 	"go-campaign.com/pkg/auth"
 	"go-campaign.com/pkg/validation"
 )
 
 type handler struct {
-	r repository.Repository
+	q *sqlc.Queries
 }
 
 // NewHandler creates a new user handler with the given repository.
-func NewHandler(r repository.Repository) *handler {
+func NewHandler(q *sqlc.Queries) *handler {
 	return &handler{
-		r: r,
+		q: q,
 	}
 }
 
@@ -62,13 +62,11 @@ func (h *handler) Index(c *fiber.Ctx) error {
 		)
 	}
 
-	campaigns, err := h.r.Paginate(repository.Filters{
-		{
-			Column:   "user_id",
-			Value:    userID,
-			Operator: "=",
-		},
-	}, page, perPage)
+	campaigns, err := h.q.GetPaginatedUserCampaign(c.Context(), sqlc.GetPaginatedUserCampaignParams{
+		UserID: int32(userID),
+		Limit:  int32(perPage),
+		Offset: int32((page - 1) * perPage),
+	})
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(
@@ -84,7 +82,7 @@ func (h *handler) Index(c *fiber.Ctx) error {
 		response.NewResponse(
 			"success",
 			"Campaigns retrieved successfully",
-			listCampaignCollection(campaigns),
+			campaigns,
 		),
 	) // Placeholder return
 }
@@ -163,16 +161,15 @@ func (h *handler) Create(c *fiber.Ctx) error {
 		)
 	}
 
-	campaign, err := h.r.Create(entities.Campaign{
-		UserID:        userID,
-		Title:         req.Title,
-		Description:   req.Description,
-		Slug:          req.Slug,
-		TargetAmount:  req.TargetAmount,
-		CurrentAmount: 0, // Initial current amount is 0
-		StartDate:     startDate,
-		EndDate:       endDate,
-		Status:        entities.Status(req.Status),
+	campaign, err := h.q.CreateCampaign(c.Context(), sqlc.CreateCampaignParams{
+		UserID:       int32(userID),
+		Title:        req.Title,
+		Description:  &req.Description,
+		Slug:         req.Slug,
+		TargetAmount: strconv.FormatFloat(float64(req.TargetAmount), 'f', -1, 32),
+		StartDate:    startDate,
+		EndDate:      endDate,
+		Status:       int32(req.Status),
 	})
 
 	if err != nil {
@@ -219,8 +216,22 @@ func (h *handler) Show(c *fiber.Ctx) error {
 		)
 	}
 
-	campaignID := c.Params("id")
-	campaign, err := h.r.FindBy("id", campaignID)
+	campaignID, err := strconv.Atoi(c.Params("id"))
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Invalid campaign ID",
+				"Campaign ID must be a valid integer",
+			),
+		)
+	}
+
+	campaign, err := h.q.GetUserCampaignById(c.Context(), sqlc.GetUserCampaignByIdParams{
+		ID:     int32(campaignID),
+		UserID: int32(userID),
+	})
 
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(
@@ -232,31 +243,11 @@ func (h *handler) Show(c *fiber.Ctx) error {
 		)
 	}
 
-	if campaign.UserID != userID {
-		return c.Status(fiber.StatusForbidden).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Forbidden",
-				"You do not have permission to access this campaign",
-			),
-		)
-	}
-
 	return c.Status(200).JSON(
 		response.NewResponse(
 			"success",
 			"Campaign retrieved successfully",
-			map[string]any{
-				"id":             campaign.ID,
-				"title":          campaign.Title,
-				"description":    campaign.Description,
-				"slug":           campaign.Slug,
-				"target_amount":  campaign.TargetAmount,
-				"current_amount": campaign.CurrentAmount,
-				"start_date":     campaign.StartDate.Format(time.RFC3339),
-				"end_date":       campaign.EndDate.Format(time.RFC3339),
-				"status":         campaign.Status,
-			},
+			campaign,
 		),
 	)
 }
@@ -274,23 +265,28 @@ func (h *handler) Update(c *fiber.Ctx) error {
 		)
 	}
 
-	campaignID := c.Params("id")
-	cp, err := h.r.FindBy("id", campaignID)
+	campaignID, err := strconv.Atoi(c.Params("id"))
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Invalid campaign ID",
+				"Campaign ID must be a valid integer",
+			),
+		)
+	}
+
+	cp, err := h.q.GetUserCampaignById(c.Context(), sqlc.GetUserCampaignByIdParams{
+		ID:     int32(campaignID),
+		UserID: int32(userID),
+	})
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(
 			response.NewErrorResponse(
 				"error",
 				"Campaign not found",
 				err.Error(),
-			),
-		)
-	}
-	if cp.UserID != userID {
-		return c.Status(fiber.StatusForbidden).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Forbidden",
-				"You do not have permission to update this campaign",
 			),
 		)
 	}
@@ -335,9 +331,9 @@ func (h *handler) Update(c *fiber.Ctx) error {
 
 	// Update the campaign with the new data
 	cp.Title = req.Title
-	cp.Description = req.Description
+	cp.Description = &req.Description
 	cp.Slug = req.Slug
-	cp.TargetAmount = req.TargetAmount
+	cp.TargetAmount = strconv.FormatFloat(float64(req.TargetAmount), 'f', -1, 32)
 	cp.StartDate, err = time.Parse(time.DateTime, req.StartDate)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(
@@ -359,9 +355,19 @@ func (h *handler) Update(c *fiber.Ctx) error {
 		)
 	}
 
-	cp.Status = entities.Status(req.Status)
+	cp.Status = int32(entities.Status(req.Status))
 
-	updatedCampaign, err := h.r.Update(cp)
+	updatedCampaign, err := h.q.UpdateCampaign(c.Context(), sqlc.UpdateCampaignParams{
+		Title:        cp.Title,
+		Description:  cp.Description,
+		Slug:         cp.Slug,
+		TargetAmount: cp.TargetAmount,
+		StartDate:    cp.StartDate,
+		EndDate:      cp.EndDate,
+		Status:       cp.Status,
+		UserID:       cp.UserID,
+		ID:           cp.ID,
+	})
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			response.NewErrorResponse(
@@ -376,77 +382,67 @@ func (h *handler) Update(c *fiber.Ctx) error {
 		response.NewResponse(
 			"success",
 			"Campaign updated successfully",
-			map[string]any{
-				"id":             updatedCampaign.ID,
-				"title":          updatedCampaign.Title,
-				"description":    updatedCampaign.Description,
-				"slug":           updatedCampaign.Slug,
-				"target_amount":  updatedCampaign.TargetAmount,
-				"current_amount": updatedCampaign.CurrentAmount,
-				"start_date":     updatedCampaign.StartDate.Format(time.RFC3339),
-				"end_date":       updatedCampaign.EndDate.Format(time.RFC3339),
-				"status":         updatedCampaign.Status,
-			},
+			updatedCampaign,
 		),
 	)
 }
 
-func (h *handler) Delete(c *fiber.Ctx) error {
-	userID, err := auth.ValidateToken(c.Locals("user").(*jwt.Token).Raw)
+// func (h *handler) Delete(c *fiber.Ctx) error {
+// 	userID, err := auth.ValidateToken(c.Locals("user").(*jwt.Token).Raw)
 
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Unauthorized",
-				"Failed to validate token",
-			),
-		)
-	}
+// 	if err != nil {
+// 		return c.Status(fiber.StatusUnauthorized).JSON(
+// 			response.NewErrorResponse(
+// 				"error",
+// 				"Unauthorized",
+// 				"Failed to validate token",
+// 			),
+// 		)
+// 	}
 
-	campaignID := c.Params("id")
+// 	campaignID := c.Params("id")
 
-	cp, err := h.r.FindBy("id", campaignID)
-	if err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Campaign not found",
-				err.Error(),
-			),
-		)
-	}
+// 	cp, err := h.r.FindBy("id", campaignID)
+// 	if err != nil {
+// 		return c.Status(fiber.StatusNotFound).JSON(
+// 			response.NewErrorResponse(
+// 				"error",
+// 				"Campaign not found",
+// 				err.Error(),
+// 			),
+// 		)
+// 	}
 
-	if cp.UserID != userID {
-		return c.Status(fiber.StatusForbidden).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Forbidden",
-				"You do not have permission to delete this campaign",
-			),
-		)
-	}
+// 	if cp.UserID != userID {
+// 		return c.Status(fiber.StatusForbidden).JSON(
+// 			response.NewErrorResponse(
+// 				"error",
+// 				"Forbidden",
+// 				"You do not have permission to delete this campaign",
+// 			),
+// 		)
+// 	}
 
-	deletedAt := time.Now()
-	cp.DeletedAt = &deletedAt
+// 	deletedAt := time.Now()
+// 	cp.DeletedAt = &deletedAt
 
-	_, err = h.r.Update(cp)
+// 	_, err = h.r.Update(cp)
 
-	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Failed to delete campaign",
-				err.Error(),
-			),
-		)
-	}
+// 	if err != nil {
+// 		return c.Status(fiber.StatusInternalServerError).JSON(
+// 			response.NewErrorResponse(
+// 				"error",
+// 				"Failed to delete campaign",
+// 				err.Error(),
+// 			),
+// 		)
+// 	}
 
-	return c.Status(200).JSON(
-		response.NewResponse(
-			"success",
-			"Campaign deleted successfully",
-			nil,
-		),
-	)
-}
+// 	return c.Status(200).JSON(
+// 		response.NewResponse(
+// 			"success",
+// 			"Campaign deleted successfully",
+// 			nil,
+// 		),
+// 	)
+// }

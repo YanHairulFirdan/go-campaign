@@ -35,7 +35,7 @@ func main() {
 	}()
 
 	infrastuctur.InitValidation(db)
-	infrastuctur.RegisterRoute(app, db, queries)
+	infrastuctur.RegisterRoute(app, queries)
 
 	port := os.Getenv("APP_PORT")
 
