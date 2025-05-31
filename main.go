@@ -8,6 +8,7 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"go-campaign.com/internal/infrastuctur"
+	"go-campaign.com/internal/shared/repository/sqlc"
 )
 
 func main() {
@@ -21,6 +22,7 @@ func main() {
 	}
 
 	db, err := infrastuctur.InitDatabaseConnection()
+	queries := sqlc.New(db)
 
 	if err != nil {
 		panic("Error connecting to the database")
@@ -33,7 +35,7 @@ func main() {
 	}()
 
 	infrastuctur.InitValidation(db)
-	infrastuctur.RegisterRoute(app, db)
+	infrastuctur.RegisterRoute(app, db, queries)
 
 	port := os.Getenv("APP_PORT")
 

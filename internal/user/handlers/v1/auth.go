@@ -3,20 +3,20 @@ package v1
 import (
 	"github.com/gofiber/fiber/v2"
 	"go-campaign.com/internal/shared/http/response"
+	"go-campaign.com/internal/shared/repository/sqlc"
 	"go-campaign.com/internal/user/entities"
-	"go-campaign.com/internal/user/repository"
 	"go-campaign.com/pkg/auth"
 	"go-campaign.com/pkg/hash"
 	"go-campaign.com/pkg/validation"
 )
 
 type handler struct {
-	repository repository.Repository
+	queries *sqlc.Queries
 }
 
-func NewHandler(repository repository.Repository) *handler {
+func NewHandler(q *sqlc.Queries) *handler {
 	return &handler{
-		repository: repository,
+		queries: q,
 	}
 }
 
@@ -56,7 +56,11 @@ func (h *handler) Register(c *fiber.Ctx) error {
 		Password: password,
 	}
 
-	_, err = h.repository.Create(user)
+	_, err = h.queries.CreateUser(c.Context(), sqlc.CreateUserParams{
+		Name:     user.Name,
+		Email:    user.Email,
+		Password: user.Password,
+	})
 
 	if err != nil {
 		return c.Status(500).JSON(
@@ -105,7 +109,7 @@ func (h *handler) Login(c *fiber.Ctx) error {
 		)
 	}
 
-	user, err := h.repository.FindBy("email", req.Email)
+	user, err := h.queries.GetUserByEmail(c.Context(), req.Email)
 	if err != nil {
 		return c.Status(404).JSON(
 			response.NewErrorResponse("error", "User not found", err.Error()),
@@ -118,7 +122,7 @@ func (h *handler) Login(c *fiber.Ctx) error {
 		)
 	}
 
-	jwtToken, err := auth.GenerateToken(user.ID)
+	jwtToken, err := auth.GenerateToken(int(user.ID))
 	if err != nil {
 		return c.Status(500).JSON(
 			response.NewErrorResponse("error", "Error when generating token", err.Error()),
