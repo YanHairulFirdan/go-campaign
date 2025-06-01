@@ -89,30 +89,50 @@ SELECT id, title,
 		   WHEN current_amount = 0 THEN 0 
 		   ELSE target_amount / current_amount 
 	   END::DECIMAL(10, 2) AS progress, 
-	   start_date, end_date, status
+	   start_date, end_date, status,
+	   CASE
+	   	   	WHEN status = 0 THEN 'Draft'
+	   	   	WHEN status = 1 THEN 'Active'
+	   	   	WHEN status = 2 THEN 'Completed'
+	   	   	WHEN status = 3 THEN 'Cancelled'
+	   	   ELSE 'Unknown'
+	   END AS status_label
 FROM campaigns
-WHERE user_id = $1 
+WHERE 
+	user_id = $1 AND
+	deleted_at IS NULL AND
+	title ILIKE '%' || $4::text || '%' AND
+	status = $5::integer
 ORDER BY start_date DESC
 LIMIT $2 OFFSET $3
 `
 
 type GetPaginatedUserCampaignParams struct {
-	UserID int32 `json:"user_id"`
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	UserID int32  `json:"user_id"`
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+	Title  string `json:"title"`
+	Status int32  `json:"status"`
 }
 
 type GetPaginatedUserCampaignRow struct {
-	ID        int32     `json:"id"`
-	Title     string    `json:"title"`
-	Progress  string    `json:"progress"`
-	StartDate time.Time `json:"start_date"`
-	EndDate   time.Time `json:"end_date"`
-	Status    int32     `json:"status"`
+	ID          int32     `json:"id"`
+	Title       string    `json:"title"`
+	Progress    string    `json:"progress"`
+	StartDate   time.Time `json:"start_date"`
+	EndDate     time.Time `json:"end_date"`
+	Status      int32     `json:"status"`
+	StatusLabel string    `json:"status_label"`
 }
 
 func (q *Queries) GetPaginatedUserCampaign(ctx context.Context, arg GetPaginatedUserCampaignParams) ([]GetPaginatedUserCampaignRow, error) {
-	rows, err := q.db.QueryContext(ctx, getPaginatedUserCampaign, arg.UserID, arg.Limit, arg.Offset)
+	rows, err := q.db.QueryContext(ctx, getPaginatedUserCampaign,
+		arg.UserID,
+		arg.Limit,
+		arg.Offset,
+		arg.Title,
+		arg.Status,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -127,6 +147,7 @@ func (q *Queries) GetPaginatedUserCampaign(ctx context.Context, arg GetPaginated
 			&i.StartDate,
 			&i.EndDate,
 			&i.Status,
+			&i.StatusLabel,
 		); err != nil {
 			return nil, err
 		}

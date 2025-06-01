@@ -66,6 +66,8 @@ func (h *handler) Index(c *fiber.Ctx) error {
 		UserID: int32(userID),
 		Limit:  int32(perPage),
 		Offset: int32((page - 1) * perPage),
+		Title:  c.Query("title", ""),
+		Status: int32(c.QueryInt("status", int(entities.StatusActive))),
 	})
 
 	if err != nil {
@@ -76,6 +78,10 @@ func (h *handler) Index(c *fiber.Ctx) error {
 				err.Error(),
 			),
 		)
+	}
+
+	if len(campaigns) == 0 {
+		campaigns = []sqlc.GetPaginatedUserCampaignRow{}
 	}
 
 	return c.Status(200).JSON(

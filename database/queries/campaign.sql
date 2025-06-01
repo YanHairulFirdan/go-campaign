@@ -4,9 +4,20 @@ SELECT id, title,
 		   WHEN current_amount = 0 THEN 0 
 		   ELSE target_amount / current_amount 
 	   END::DECIMAL(10, 2) AS progress, 
-	   start_date, end_date, status
+	   start_date, end_date, status,
+	   CASE
+	   	   	WHEN status = 0 THEN 'Draft'
+	   	   	WHEN status = 1 THEN 'Active'
+	   	   	WHEN status = 2 THEN 'Completed'
+	   	   	WHEN status = 3 THEN 'Cancelled'
+	   	   ELSE 'Unknown'
+	   END AS status_label
 FROM campaigns
-WHERE user_id = $1 
+WHERE 
+	user_id = $1 AND
+	deleted_at IS NULL AND
+	title ILIKE '%' || sqlc.arg(title)::text || '%' AND
+	status = sqlc.arg(status)::integer
 ORDER BY start_date DESC
 LIMIT $2 OFFSET $3;
 
