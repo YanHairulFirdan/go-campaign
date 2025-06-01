@@ -83,6 +83,74 @@ func (q *Queries) GetCampaignBySlug(ctx context.Context, slug string) (Campaign,
 	return i, err
 }
 
+const getCampaigns = `-- name: GetCampaigns :many
+SELECT id, title, 
+	   CASE 
+		   WHEN current_amount = 0 THEN 0 
+		   ELSE target_amount / current_amount 
+	   END::DECIMAL(10, 2) AS progress, 
+	   start_date, end_date,
+	   CASE
+	   	   	WHEN status = 0 THEN 'Draft'
+	   	   	WHEN status = 1 THEN 'Active'
+	   	   	WHEN status = 2 THEN 'Completed'
+	   	   	WHEN status = 3 THEN 'Cancelled'
+	   	   ELSE 'Unknown'
+	   END AS status
+FROM campaigns
+WHERE 
+	deleted_at IS NULL AND
+	status = 1 AND
+	start_date <= CURRENT_TIMESTAMP AND
+	end_date >= CURRENT_TIMESTAMP
+ORDER BY start_date DESC
+LIMIT $1 OFFSET $2
+`
+
+type GetCampaignsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type GetCampaignsRow struct {
+	ID        int32     `json:"id"`
+	Title     string    `json:"title"`
+	Progress  string    `json:"progress"`
+	StartDate time.Time `json:"start_date"`
+	EndDate   time.Time `json:"end_date"`
+	Status    string    `json:"status"`
+}
+
+func (q *Queries) GetCampaigns(ctx context.Context, arg GetCampaignsParams) ([]GetCampaignsRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCampaigns, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCampaignsRow
+	for rows.Next() {
+		var i GetCampaignsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Progress,
+			&i.StartDate,
+			&i.EndDate,
+			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getPaginatedUserCampaign = `-- name: GetPaginatedUserCampaign :many
 SELECT id, title, 
 	   CASE 
@@ -160,6 +228,23 @@ func (q *Queries) GetPaginatedUserCampaign(ctx context.Context, arg GetPaginated
 		return nil, err
 	}
 	return items, nil
+}
+
+const getTotalCampaigns = `-- name: GetTotalCampaigns :one
+SELECT COUNT(*) AS total
+FROM campaigns
+WHERE 
+	deleted_at IS NULL AND
+	status = 1 AND
+	start_date <= CURRENT_TIMESTAMP AND
+	end_date >= CURRENT_TIMESTAMP
+`
+
+func (q *Queries) GetTotalCampaigns(ctx context.Context) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getTotalCampaigns)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
 }
 
 const getTotalUserCampaigns = `-- name: GetTotalUserCampaigns :one

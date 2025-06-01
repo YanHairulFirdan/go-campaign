@@ -9,6 +9,7 @@ import (
 
 func RegisterRouteV1(router fiber.Router, q *sqlc.Queries) {
 	userHandler := v1.NewHandler(q)
+	publicHandler := v1.NewPublicHandler(q)
 
 	routeGroup := router.Group("/user/campaigns", middleware.Protected())
 
@@ -16,5 +17,8 @@ func RegisterRouteV1(router fiber.Router, q *sqlc.Queries) {
 	routeGroup.Post("/", userHandler.Create)
 	routeGroup.Get("/:id", userHandler.Show)
 	routeGroup.Put("/:id", userHandler.Update)
+
+	publicCampaign := router.Group("/campaigns")
+	publicCampaign.Get("/", publicHandler.Index)
 	// routeGroup.Delete("/:id", userHandler.Delete)
 }

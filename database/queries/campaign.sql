@@ -54,3 +54,35 @@ RETURNING *;
 -- name: GetCampaignBySlug :one
 SELECT * FROM campaigns
 WHERE slug = $1;
+
+-- name: GetCampaigns :many
+SELECT id, title, 
+	   CASE 
+		   WHEN current_amount = 0 THEN 0 
+		   ELSE target_amount / current_amount 
+	   END::DECIMAL(10, 2) AS progress, 
+	   start_date, end_date,
+	   CASE
+	   	   	WHEN status = 0 THEN 'Draft'
+	   	   	WHEN status = 1 THEN 'Active'
+	   	   	WHEN status = 2 THEN 'Completed'
+	   	   	WHEN status = 3 THEN 'Cancelled'
+	   	   ELSE 'Unknown'
+	   END AS status
+FROM campaigns
+WHERE 
+	deleted_at IS NULL AND
+	status = 1 AND
+	start_date <= CURRENT_TIMESTAMP AND
+	end_date >= CURRENT_TIMESTAMP
+ORDER BY start_date DESC
+LIMIT $1 OFFSET $2;
+
+-- name: GetTotalCampaigns :one
+SELECT COUNT(*) AS total
+FROM campaigns
+WHERE 
+	deleted_at IS NULL AND
+	status = 1 AND
+	start_date <= CURRENT_TIMESTAMP AND
+	end_date >= CURRENT_TIMESTAMP;
