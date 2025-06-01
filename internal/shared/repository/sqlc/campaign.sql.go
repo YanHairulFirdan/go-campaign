@@ -162,6 +162,29 @@ func (q *Queries) GetPaginatedUserCampaign(ctx context.Context, arg GetPaginated
 	return items, nil
 }
 
+const getTotalUserCampaigns = `-- name: GetTotalUserCampaigns :one
+SELECT COUNT(*) AS total
+FROM campaigns
+WHERE 
+	user_id = $1 AND
+	deleted_at IS NULL AND
+	title ILIKE '%' || $2::text || '%' AND
+	status = $3::integer
+`
+
+type GetTotalUserCampaignsParams struct {
+	UserID int32  `json:"user_id"`
+	Title  string `json:"title"`
+	Status int32  `json:"status"`
+}
+
+func (q *Queries) GetTotalUserCampaigns(ctx context.Context, arg GetTotalUserCampaignsParams) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getTotalUserCampaigns, arg.UserID, arg.Title, arg.Status)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
 const getUserCampaignById = `-- name: GetUserCampaignById :one
 SELECT id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status, created_at, updated_at, deleted_at FROM campaigns
 WHERE id = $1 AND user_id = $2

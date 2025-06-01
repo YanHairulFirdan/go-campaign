@@ -21,6 +21,15 @@ WHERE
 ORDER BY start_date DESC
 LIMIT $2 OFFSET $3;
 
+-- name: GetTotalUserCampaigns :one
+SELECT COUNT(*) AS total
+FROM campaigns
+WHERE 
+	user_id = $1 AND
+	deleted_at IS NULL AND
+	title ILIKE '%' || sqlc.arg(title)::text || '%' AND
+	status = sqlc.arg(status)::integer;
+
 -- name: GetUserCampaignById :one
 SELECT * FROM campaigns
 WHERE id = $1 AND user_id = $2;
