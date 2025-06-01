@@ -40,36 +40,41 @@ func (h *handler) Index(c *fiber.Ctx) error {
 		)
 	}
 
-	page, err := strconv.Atoi(c.Query("page", "1"))
+	page := c.QueryInt("page", 1)
+	perPage := c.QueryInt("per_page", 10)
 
-	if err != nil || page < 1 {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Invalid page number",
-				"Page number must be a positive integer",
-			),
-		)
-	}
-	perPage, err := strconv.Atoi(c.Query("per_page", "10"))
-	if err != nil || perPage < 1 {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Invalid per_page number",
-				"Per page number must be a positive integer",
-			),
-		)
-	}
+	pb := response.NewPaginationBuilder(
+		perPage,
+		page,
+		func() ([]sqlc.GetPaginatedUserCampaignRow, error) {
+			campaigns, err := h.q.GetPaginatedUserCampaign(c.Context(), sqlc.GetPaginatedUserCampaignParams{
+				UserID: int32(userID),
+				Limit:  int32(perPage),
+				Offset: int32((page - 1) * perPage),
+				Title:  c.Query("title", ""),
+				Status: int32(c.QueryInt("status", int(entities.StatusActive))),
+			})
 
-	campaigns, err := h.q.GetPaginatedUserCampaign(c.Context(), sqlc.GetPaginatedUserCampaignParams{
-		UserID: int32(userID),
-		Limit:  int32(perPage),
-		Offset: int32((page - 1) * perPage),
-		Title:  c.Query("title", ""),
-		Status: int32(c.QueryInt("status", int(entities.StatusActive))),
-	})
+			if err != nil {
+				return nil, err
+			}
 
+			return campaigns, nil
+		},
+		func() (int, error) {
+			totalCount, err := h.q.GetTotalUserCampaigns(c.Context(), sqlc.GetTotalUserCampaignsParams{
+				UserID: int32(userID),
+				Title:  c.Query("title", ""),
+				Status: int32(c.QueryInt("status", int(entities.StatusActive))),
+			})
+			if err != nil {
+				return 0, err
+			}
+			return int(totalCount), nil
+		},
+	)
+
+	pagination, err := pb.Build()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			response.NewErrorResponse(
@@ -80,17 +85,7 @@ func (h *handler) Index(c *fiber.Ctx) error {
 		)
 	}
 
-	if len(campaigns) == 0 {
-		campaigns = []sqlc.GetPaginatedUserCampaignRow{}
-	}
-
-	return c.Status(200).JSON(
-		response.NewResponse(
-			"success",
-			"Campaigns retrieved successfully",
-			campaigns,
-		),
-	) // Placeholder return
+	return c.Status(200).JSON(pagination)
 }
 
 // createCampaign creates a new campaign for a user.
