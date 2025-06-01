@@ -52,11 +52,18 @@ WHERE id = $1 AND user_id = $2
 RETURNING *;
 
 -- name: GetCampaignBySlug :one
-SELECT * FROM campaigns
-WHERE slug = $1;
+SELECT campaigns.id, campaigns.title, campaigns.description, campaigns.slug, campaigns.target_amount, campaigns.current_amount, campaigns.start_date, campaigns.end_date,
+	users.name as user_name, users.email as user_email,
+	CASE 
+		WHEN campaigns.current_amount = 0 THEN 0 
+		ELSE campaigns.target_amount / campaigns.current_amount 
+	END::DECIMAL(10, 2) AS progress
+FROM campaigns
+JOIN users ON campaigns.user_id = users.id
+WHERE campaigns.slug = $1;
 
 -- name: GetCampaigns :many
-SELECT id, title, 
+SELECT id, title, slug,
 		current_amount, target_amount,
 	   CASE 
 		   WHEN current_amount = 0 THEN 0 

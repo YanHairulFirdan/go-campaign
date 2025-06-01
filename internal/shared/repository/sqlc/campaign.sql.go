@@ -58,33 +58,52 @@ func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) 
 }
 
 const getCampaignBySlug = `-- name: GetCampaignBySlug :one
-SELECT id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status, created_at, updated_at, deleted_at FROM campaigns
-WHERE slug = $1
+SELECT campaigns.id, campaigns.title, campaigns.description, campaigns.slug, campaigns.target_amount, campaigns.current_amount, campaigns.start_date, campaigns.end_date,
+	users.name as user_name, users.email as user_email,
+	CASE 
+		WHEN campaigns.current_amount = 0 THEN 0 
+		ELSE campaigns.target_amount / campaigns.current_amount 
+	END::DECIMAL(10, 2) AS progress
+FROM campaigns
+JOIN users ON campaigns.user_id = users.id
+WHERE campaigns.slug = $1
 `
 
-func (q *Queries) GetCampaignBySlug(ctx context.Context, slug string) (Campaign, error) {
+type GetCampaignBySlugRow struct {
+	ID            int32     `json:"id"`
+	Title         string    `json:"title"`
+	Description   *string   `json:"description"`
+	Slug          string    `json:"slug"`
+	TargetAmount  string    `json:"target_amount"`
+	CurrentAmount *float32  `json:"current_amount"`
+	StartDate     time.Time `json:"start_date"`
+	EndDate       time.Time `json:"end_date"`
+	UserName      string    `json:"user_name"`
+	UserEmail     string    `json:"user_email"`
+	Progress      string    `json:"progress"`
+}
+
+func (q *Queries) GetCampaignBySlug(ctx context.Context, slug string) (GetCampaignBySlugRow, error) {
 	row := q.db.QueryRowContext(ctx, getCampaignBySlug, slug)
-	var i Campaign
+	var i GetCampaignBySlugRow
 	err := row.Scan(
 		&i.ID,
 		&i.Title,
 		&i.Description,
 		&i.Slug,
-		&i.UserID,
 		&i.TargetAmount,
 		&i.CurrentAmount,
 		&i.StartDate,
 		&i.EndDate,
-		&i.Status,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeletedAt,
+		&i.UserName,
+		&i.UserEmail,
+		&i.Progress,
 	)
 	return i, err
 }
 
 const getCampaigns = `-- name: GetCampaigns :many
-SELECT id, title, 
+SELECT id, title, slug,
 		current_amount, target_amount,
 	   CASE 
 		   WHEN current_amount = 0 THEN 0 
@@ -116,6 +135,7 @@ type GetCampaignsParams struct {
 type GetCampaignsRow struct {
 	ID            int32     `json:"id"`
 	Title         string    `json:"title"`
+	Slug          string    `json:"slug"`
 	CurrentAmount *float32  `json:"current_amount"`
 	TargetAmount  string    `json:"target_amount"`
 	Progress      string    `json:"progress"`
@@ -136,6 +156,7 @@ func (q *Queries) GetCampaigns(ctx context.Context, arg GetCampaignsParams) ([]G
 		if err := rows.Scan(
 			&i.ID,
 			&i.Title,
+			&i.Slug,
 			&i.CurrentAmount,
 			&i.TargetAmount,
 			&i.Progress,

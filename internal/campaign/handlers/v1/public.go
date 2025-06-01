@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"log"
+
 	"github.com/gofiber/fiber/v2"
 	"go-campaign.com/internal/shared/http/response"
 	"go-campaign.com/internal/shared/repository/sqlc"
@@ -66,4 +68,39 @@ func (h *publicHandler) Index(c *fiber.Ctx) error {
 	}
 
 	return c.Status(200).JSON(campaigns)
+}
+
+// show by slug
+func (h *publicHandler) Show(c *fiber.Ctx) error {
+	slug := c.Params("slug")
+	if slug == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Slug is required",
+				"Slug parameter cannot be empty",
+			),
+		)
+	}
+
+	log.Println("Fetching campaign with slug:", slug)
+
+	campaign, err := h.q.GetCampaignBySlug(c.Context(), slug)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Campaign not found",
+				err.Error(),
+			),
+		)
+	}
+
+	return c.Status(200).JSON(
+		response.NewResponse(
+			"success",
+			"Campaign retrieved successfully",
+			campaign,
+		),
+	)
 }

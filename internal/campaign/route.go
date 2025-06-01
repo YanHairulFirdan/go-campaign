@@ -20,5 +20,6 @@ func RegisterRouteV1(router fiber.Router, q *sqlc.Queries) {
 
 	publicCampaign := router.Group("/campaigns")
 	publicCampaign.Get("/", publicHandler.Index)
+	publicCampaign.Get("/:slug", publicHandler.Show)
 	// routeGroup.Delete("/:id", userHandler.Delete)
 }
