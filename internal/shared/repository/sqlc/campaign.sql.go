@@ -85,6 +85,7 @@ func (q *Queries) GetCampaignBySlug(ctx context.Context, slug string) (Campaign,
 
 const getCampaigns = `-- name: GetCampaigns :many
 SELECT id, title, 
+		current_amount, target_amount,
 	   CASE 
 		   WHEN current_amount = 0 THEN 0 
 		   ELSE target_amount / current_amount 
@@ -113,12 +114,14 @@ type GetCampaignsParams struct {
 }
 
 type GetCampaignsRow struct {
-	ID        int32     `json:"id"`
-	Title     string    `json:"title"`
-	Progress  string    `json:"progress"`
-	StartDate time.Time `json:"start_date"`
-	EndDate   time.Time `json:"end_date"`
-	Status    string    `json:"status"`
+	ID            int32     `json:"id"`
+	Title         string    `json:"title"`
+	CurrentAmount *float32  `json:"current_amount"`
+	TargetAmount  string    `json:"target_amount"`
+	Progress      string    `json:"progress"`
+	StartDate     time.Time `json:"start_date"`
+	EndDate       time.Time `json:"end_date"`
+	Status        string    `json:"status"`
 }
 
 func (q *Queries) GetCampaigns(ctx context.Context, arg GetCampaignsParams) ([]GetCampaignsRow, error) {
@@ -133,6 +136,8 @@ func (q *Queries) GetCampaigns(ctx context.Context, arg GetCampaignsParams) ([]G
 		if err := rows.Scan(
 			&i.ID,
 			&i.Title,
+			&i.CurrentAmount,
+			&i.TargetAmount,
 			&i.Progress,
 			&i.StartDate,
 			&i.EndDate,

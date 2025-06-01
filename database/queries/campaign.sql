@@ -57,6 +57,7 @@ WHERE slug = $1;
 
 -- name: GetCampaigns :many
 SELECT id, title, 
+		current_amount, target_amount,
 	   CASE 
 		   WHEN current_amount = 0 THEN 0 
 		   ELSE target_amount / current_amount 
