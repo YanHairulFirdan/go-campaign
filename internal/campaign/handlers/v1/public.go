@@ -1,20 +1,31 @@
 package v1
 
 import (
+	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"go-campaign.com/internal/shared/http/response"
+	"go-campaign.com/internal/shared/repository"
 	"go-campaign.com/internal/shared/repository/sqlc"
+	"go-campaign.com/pkg/auth"
+	"go-campaign.com/pkg/validation"
 )
 
 type publicHandler struct {
-	q *sqlc.Queries
+	q       *sqlc.Queries
+	txStore *repository.TransactionStore
 }
 
-func NewPublicHandler(q *sqlc.Queries) *publicHandler {
+func NewPublicHandler(
+	q *sqlc.Queries,
+	txStore *repository.TransactionStore,
+) *publicHandler {
 	return &publicHandler{
-		q: q,
+		q:       q,
+		txStore: txStore,
 	}
 }
 
@@ -101,6 +112,149 @@ func (h *publicHandler) Show(c *fiber.Ctx) error {
 			"success",
 			"Campaign retrieved successfully",
 			campaign,
+		),
+	)
+}
+
+func (h *publicHandler) Donate(c *fiber.Ctx) error {
+	jwtToken := c.Locals("user").(*jwt.Token)
+
+	userID, ok := auth.ValidateToken(jwtToken.Raw)
+
+	if ok != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Unauthorized",
+				"Invalid token",
+			),
+		)
+	}
+
+	slug := c.Params("slug")
+	if slug == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Slug is required",
+				"Slug parameter cannot be empty",
+			),
+		)
+	}
+
+	campaign, err := h.q.FindCampaignsBySlugForUpdate(c.Context(), slug)
+	if err != nil || campaign.ID == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Campaign not found",
+				"Campaign with the provided slug does not exist",
+			),
+		)
+	}
+
+	if userID == int(campaign.UserID) {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Cannot donate to your own campaign",
+				"You cannot donate to your own campaign",
+			),
+		)
+	}
+
+	var donationRequest DonationRequest
+
+	if err := c.BodyParser(&donationRequest); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Invalid request body",
+				"Failed to parse request body",
+			),
+		)
+	}
+
+	errMessages, err := validation.Validate(donationRequest, nil)
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Validation error",
+				err.Error(),
+			),
+		)
+	}
+
+	if len(errMessages) > 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewValidationErrorResponse(
+				"error",
+				"Validation error",
+				errMessages,
+			),
+		)
+	}
+
+	err = h.txStore.ExecTx(func() error {
+		// create donaturs
+		d, err := h.q.CreateDonatur(c.Context(), sqlc.CreateDonaturParams{
+			CampaignID: campaign.ID,
+			UserID:     int32(userID),
+			Name:       donationRequest.Name,
+			Email: sql.NullString{
+				String: donationRequest.Email,
+				Valid:  donationRequest.Email != "",
+			},
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to create donatur: %w", err)
+		}
+
+		_, err = h.q.CreateDonation(c.Context(), sqlc.CreateDonationParams{
+			DonaturID:  d.ID,
+			CampaignID: campaign.ID,
+			Amount:     fmt.Sprintf("%d", donationRequest.Amount),
+			Note: sql.NullString{
+				String: donationRequest.Note,
+				Valid:  donationRequest.Note != "",
+			},
+			PaymentStatus: int32(sqlc.DonationPaymentStatusPending),
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to create donation: %w", err)
+		}
+
+		err = h.q.Donate(c.Context(), sqlc.DonateParams{
+			ID:     campaign.ID,
+			Amount: fmt.Sprintf("%d", donationRequest.Amount),
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to donate: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Internal server error",
+				err.Error(),
+			),
+		)
+	}
+
+	return c.Status(fiber.StatusOK).JSON(
+		response.NewResponse(
+			"success",
+			"Donation successful",
+			nil,
 		),
 	)
 }
