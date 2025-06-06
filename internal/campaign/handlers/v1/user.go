@@ -5,11 +5,9 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/golang-jwt/jwt/v5"
 	"go-campaign.com/internal/campaign/entities"
 	"go-campaign.com/internal/shared/http/response"
 	"go-campaign.com/internal/shared/repository/sqlc"
-	"go-campaign.com/pkg/auth"
 	"go-campaign.com/pkg/validation"
 )
 
@@ -26,19 +24,7 @@ func NewHandler(q *sqlc.Queries) *handler {
 
 // listCampaigns lists all campaigns for a user.
 func (h *handler) Index(c *fiber.Ctx) error {
-	jwtToken := c.Locals("user").(*jwt.Token)
-
-	userID, ok := auth.ValidateToken(jwtToken.Raw)
-
-	if ok != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Unauthorized",
-				"Invalid user ID in token",
-			),
-		)
-	}
+	userID := c.Locals("userID").(int)
 
 	page := c.QueryInt("page", 1)
 	perPage := c.QueryInt("per_page", 10)
@@ -90,19 +76,7 @@ func (h *handler) Index(c *fiber.Ctx) error {
 
 // createCampaign creates a new campaign for a user.
 func (h *handler) Create(c *fiber.Ctx) error {
-	jwtToken := c.Locals("user").(*jwt.Token)
-
-	userID, ok := auth.ValidateToken(jwtToken.Raw)
-
-	if ok != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Unauthorized",
-				"Invalid user ID in token",
-			),
-		)
-	}
+	userID := c.Locals("userID").(int)
 
 	var req createCampaignRequest
 
@@ -203,20 +177,7 @@ func (h *handler) Create(c *fiber.Ctx) error {
 }
 
 func (h *handler) Show(c *fiber.Ctx) error {
-	jwtToken := c.Locals("user").(*jwt.Token)
-
-	userID, err := auth.ValidateToken(jwtToken.Raw)
-
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Unauthorized",
-				"Failed validate token",
-			),
-		)
-	}
-
+	userID := c.Locals("userID").(int)
 	campaignID, err := strconv.Atoi(c.Params("id"))
 
 	if err != nil {
@@ -254,17 +215,7 @@ func (h *handler) Show(c *fiber.Ctx) error {
 }
 
 func (h *handler) Update(c *fiber.Ctx) error {
-	userID, err := auth.ValidateToken(c.Locals("user").(*jwt.Token).Raw)
-
-	if err != nil {
-		return c.Status(fiber.StatusUnauthorized).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Unauthorized",
-				"Failed to validate token",
-			),
-		)
-	}
+	userID := c.Locals("userID").(int)
 
 	campaignID, err := strconv.Atoi(c.Params("id"))
 

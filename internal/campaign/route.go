@@ -12,7 +12,7 @@ func RegisterRouteV1(router fiber.Router, q *sqlc.Queries, txStore *repository.T
 	userHandler := v1.NewHandler(q)
 	publicHandler := v1.NewPublicHandler(q, txStore)
 
-	routeGroup := router.Group("/user/campaigns", middleware.Protected())
+	routeGroup := router.Group("/user/campaigns", middleware.Protected(), middleware.ExtractToken)
 
 	routeGroup.Get("/", userHandler.Index)
 	routeGroup.Post("/", userHandler.Create)
