@@ -47,3 +47,19 @@ CREATE INDEX idx_campaigns_start_date ON campaigns (start_date);
 -- add index for end_date
 CREATE INDEX idx_campaigns_end_date ON campaigns (end_date);
 -- end of campaigns table
+
+
+-- start of donaturs table
+CREATE TABLE IF NOT EXISTS donaturs (
+    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id INT NOT NULL,
+    campaign_id INT NOT NULL,
+    name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NULL,
+    amount DECIMAL(10, 2),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
+);
+-- end of donaturs table

@@ -25,6 +25,17 @@ type Campaign struct {
 	DeletedAt     sql.NullTime `json:"deleted_at"`
 }
 
+type Donatur struct {
+	ID         int32          `json:"id"`
+	UserID     int32          `json:"user_id"`
+	CampaignID int32          `json:"campaign_id"`
+	Name       string         `json:"name"`
+	Email      sql.NullString `json:"email"`
+	Amount     sql.NullString `json:"amount"`
+	CreatedAt  sql.NullTime   `json:"created_at"`
+	UpdatedAt  sql.NullTime   `json:"updated_at"`
+}
+
 type User struct {
 	ID        int32        `json:"id"`
 	Name      string       `json:"name"`
