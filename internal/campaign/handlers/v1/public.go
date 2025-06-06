@@ -228,11 +228,6 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 			return fmt.Errorf("failed to create donation: %w", err)
 		}
 
-		err = h.q.Donate(c.Context(), sqlc.DonateParams{
-			ID:     campaign.ID,
-			Amount: fmt.Sprintf("%d", donationRequest.Amount),
-		})
-
 		if err != nil {
 			return fmt.Errorf("failed to donate: %w", err)
 		}
