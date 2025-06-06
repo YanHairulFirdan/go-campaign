@@ -94,3 +94,13 @@ WHERE
 	status = 1 AND
 	start_date <= CURRENT_TIMESTAMP AND
 	end_date >= CURRENT_TIMESTAMP;
+
+-- name: FindCampaignsBySlugForUpdate :one
+SELECT id, user_id FROM campaigns
+WHERE slug = $1 AND deleted_at IS NULL
+FOR UPDATE;
+
+-- name: Donate :exec
+UPDATE campaigns
+SET current_amount = current_amount + sqlc.arg(amount)::numeric	
+WHERE id = $1 AND deleted_at IS NULL;

@@ -32,3 +32,12 @@ func (nt *NullableTime) UnmarshalJSON(data []byte) error {
 	nt.Valid = true
 	return nil
 }
+
+type DonationPaymentStatus int
+
+const (
+	DonationPaymentStatusPending DonationPaymentStatus = iota
+	DonationPaymentStatusProcessing
+	DonationPaymentStatusSuccess
+	DonationPaymentStatusFailed
+)

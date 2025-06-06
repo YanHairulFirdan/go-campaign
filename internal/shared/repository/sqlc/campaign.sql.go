@@ -57,6 +57,40 @@ func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) 
 	return i, err
 }
 
+const donate = `-- name: Donate :exec
+UPDATE campaigns
+SET current_amount = current_amount + $2::numeric	
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+type DonateParams struct {
+	ID     int32  `json:"id"`
+	Amount string `json:"amount"`
+}
+
+func (q *Queries) Donate(ctx context.Context, arg DonateParams) error {
+	_, err := q.db.ExecContext(ctx, donate, arg.ID, arg.Amount)
+	return err
+}
+
+const findCampaignsBySlugForUpdate = `-- name: FindCampaignsBySlugForUpdate :one
+SELECT id, user_id FROM campaigns
+WHERE slug = $1 AND deleted_at IS NULL
+FOR UPDATE
+`
+
+type FindCampaignsBySlugForUpdateRow struct {
+	ID     int32 `json:"id"`
+	UserID int32 `json:"user_id"`
+}
+
+func (q *Queries) FindCampaignsBySlugForUpdate(ctx context.Context, slug string) (FindCampaignsBySlugForUpdateRow, error) {
+	row := q.db.QueryRowContext(ctx, findCampaignsBySlugForUpdate, slug)
+	var i FindCampaignsBySlugForUpdateRow
+	err := row.Scan(&i.ID, &i.UserID)
+	return i, err
+}
+
 const getCampaignBySlug = `-- name: GetCampaignBySlug :one
 SELECT campaigns.id, campaigns.title, campaigns.description, campaigns.slug, campaigns.target_amount, campaigns.current_amount, campaigns.start_date, campaigns.end_date,
 	users.name as user_name, users.email as user_email,
