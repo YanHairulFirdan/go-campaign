@@ -3,20 +3,18 @@ package v1
 import (
 	"github.com/gofiber/fiber/v2"
 	"go-campaign.com/internal/shared/http/response"
-	"go-campaign.com/internal/shared/repository/sqlc"
-	"go-campaign.com/internal/user/entities"
+	"go-campaign.com/internal/user/services"
 	"go-campaign.com/pkg/auth"
-	"go-campaign.com/pkg/hash"
 	"go-campaign.com/pkg/validation"
 )
 
 type handler struct {
-	queries *sqlc.Queries
+	s *services.UserService
 }
 
-func NewHandler(q *sqlc.Queries) *handler {
+func NewHandler(s *services.UserService) *handler {
 	return &handler{
-		queries: q,
+		s: s,
 	}
 }
 
@@ -43,32 +41,18 @@ func (h *handler) Register(c *fiber.Ctx) error {
 		)
 	}
 
-	password, err := hash.Password(req.Password)
-	if err != nil {
-		return c.Status(500).JSON(
-			response.NewErrorResponse("error", "Failed to hash password", err.Error()),
-		)
-	}
-
-	user := entities.User{
+	userID, err := h.s.CreateUser(c.Context(), services.CreateUserDTO{
 		Name:     req.Name,
 		Email:    req.Email,
-		Password: password,
-	}
-
-	_, err = h.queries.CreateUser(c.Context(), sqlc.CreateUserParams{
-		Name:     user.Name,
-		Email:    user.Email,
-		Password: user.Password,
+		Password: req.Password,
 	})
-
 	if err != nil {
 		return c.Status(500).JSON(
 			response.NewErrorResponse("error", "Failed to create user", err.Error()),
 		)
 	}
 
-	jwtToken, err := auth.GenerateToken(user.ID)
+	jwtToken, err := auth.GenerateToken(int(userID))
 
 	if err != nil {
 		return c.Status(500).JSON(
@@ -109,20 +93,16 @@ func (h *handler) Login(c *fiber.Ctx) error {
 		)
 	}
 
-	user, err := h.queries.GetUserByEmail(c.Context(), req.Email)
-	if err != nil {
-		return c.Status(404).JSON(
-			response.NewErrorResponse("error", "User not found", err.Error()),
-		)
-	}
+	userID, err := h.s.CheckLoginUser(c.Context(), req.Email, req.Password)
 
-	if match, err := hash.ComparePassword(user.Password, req.Password); err != nil || !match {
+	if err != nil || userID == 0 {
 		return c.Status(401).JSON(
-			response.NewErrorResponse("error", "Invalid credentials", "Email & Password does not match"),
+			response.NewErrorResponse("error", "Invalid email or password", "Unauthorized"),
 		)
+
 	}
 
-	jwtToken, err := auth.GenerateToken(int(user.ID))
+	jwtToken, err := auth.GenerateToken(userID)
 	if err != nil {
 		return c.Status(500).JSON(
 			response.NewErrorResponse("error", "Error when generating token", err.Error()),

@@ -23,3 +23,11 @@ sql:
               import: "time"
               type: "Time"
               pointer: true
+  - engine: "postgresql"
+    queries: "./database/queries/user.sql"
+    schema: "schema.sql"
+    gen:
+      go:
+        package: "sqlc"
+        out: "internal/user/repository/sqlc"
+        emit_json_tags: true
