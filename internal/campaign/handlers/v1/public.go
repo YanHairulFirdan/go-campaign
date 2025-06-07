@@ -337,11 +337,45 @@ func (h *publicHandler) XenditWebhookCallback(c *fiber.Ctx) error {
 		jsonResponse, err := webhookEvent.ToJson()
 
 		if err != nil {
+
 			return fmt.Errorf("failed to convert webhook event to JSON: %w", err)
 		}
 
+		if webhookEvent.Status != payment.InvoiceStatusPaid {
+			_, err = h.q.UpdatePaymentFromCallback(c.Context(), sqlc.UpdatePaymentFromCallbackParams{
+				Status: int32(sqlc.DonationPaymentStatusExpired),
+				ID:     p.ID,
+				Vendor: sql.NullString{
+					String: "xendit",
+				},
+				Method: sql.NullString{
+					String: webhookEvent.PaymentMethod,
+				},
+				Response: pqtype.NullRawMessage{
+					RawMessage: []byte(jsonResponse),
+					Valid:      true,
+				},
+				PaymentDate: sql.NullTime{
+					Time: func() time.Time {
+						parsedTime, err := time.Parse("2006-01-02T15:04:05Z", webhookEvent.PaidAt)
+						if err != nil {
+							return time.Time{}
+						}
+						return parsedTime
+					}(),
+					Valid: webhookEvent.PaidAt != "",
+				},
+			})
+
+			if err != nil {
+				return fmt.Errorf("failed to update payment status to expired: %w", err)
+			}
+
+			return nil
+		}
+
 		_, err = h.q.UpdatePaymentFromCallback(c.Context(), sqlc.UpdatePaymentFromCallbackParams{
-			Status: int32(sqlc.DonationPaymentStatusExpired),
+			Status: int32(sqlc.DonationPaymentStatusPaid),
 			ID:     p.ID,
 			Vendor: sql.NullString{
 				String: "xendit",
@@ -367,10 +401,6 @@ func (h *publicHandler) XenditWebhookCallback(c *fiber.Ctx) error {
 
 		if err != nil {
 			return fmt.Errorf("failed to update payment status: %w", err)
-		}
-
-		if webhookEvent.Status != payment.InvoiceStatusPaid {
-			return nil
 		}
 
 		log.Printf("Status: %s, Amount: %.2f, Paid Amount: %.2f, Campaign ID: %d",
@@ -407,6 +437,75 @@ func (h *publicHandler) XenditWebhookCallback(c *fiber.Ctx) error {
 			"success",
 			"Webhook callback received successfully",
 			nil,
+		),
+	)
+}
+
+func (h *publicHandler) Donatur(c *fiber.Ctx) error {
+	slug := c.Params("slug")
+	if slug == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Slug is required",
+				"Slug parameter cannot be empty",
+			),
+		)
+	}
+
+	page := c.QueryInt("page", 1)
+	if page <= 0 {
+		page = 1
+	}
+
+	perPage := c.QueryInt("per_page", 10)
+	if perPage <= 0 {
+		perPage = 10
+	}
+
+	pb := response.NewPaginationBuilder(
+		perPage,
+		page,
+		func() ([]sqlc.GetPaginatedDonatursRow, error) {
+			donaturs, err := h.q.GetPaginatedDonaturs(c.Context(), sqlc.GetPaginatedDonatursParams{
+				Slug:   slug,
+				Limit:  int32(perPage),
+				Offset: int32((page - 1) * perPage),
+			})
+			if err != nil {
+				return nil, err
+			}
+
+			return donaturs, nil
+		},
+		func() (int, error) {
+			count, err := h.q.GetCampaignTotalPaidDonaturs(c.Context(), slug)
+
+			if err != nil {
+				return 0, err
+			}
+
+			return int(count), nil
+		},
+	)
+
+	donaturs, err := pb.Build()
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Internal server error",
+				err.Error(),
+			),
+		)
+	}
+
+	return c.Status(200).JSON(
+		response.NewResponse(
+			"success",
+			"Donaturs retrieved successfully",
+			donaturs,
 		),
 	)
 }
