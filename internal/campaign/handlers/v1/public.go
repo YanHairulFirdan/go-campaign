@@ -7,9 +7,11 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"go-campaign.com/internal/shared/http/response"
 	"go-campaign.com/internal/shared/repository"
 	"go-campaign.com/internal/shared/repository/sqlc"
+	"go-campaign.com/internal/shared/services/payment"
 	"go-campaign.com/pkg/auth"
 	"go-campaign.com/pkg/validation"
 )
@@ -17,15 +19,18 @@ import (
 type publicHandler struct {
 	q       *sqlc.Queries
 	txStore *repository.TransactionStore
+	pg      payment.PaymentGateway
 }
 
 func NewPublicHandler(
 	q *sqlc.Queries,
 	txStore *repository.TransactionStore,
+	pg payment.PaymentGateway,
 ) *publicHandler {
 	return &publicHandler{
 		q:       q,
 		txStore: txStore,
+		pg:      pg,
 	}
 }
 
@@ -121,6 +126,8 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 
 	userID, ok := auth.ValidateToken(jwtToken.Raw)
 
+	var url string
+
 	if ok != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(
 			response.NewErrorResponse(
@@ -213,7 +220,7 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 			return fmt.Errorf("failed to create donatur: %w", err)
 		}
 
-		_, err = h.q.CreateDonation(c.Context(), sqlc.CreateDonationParams{
+		donation, err := h.q.CreateDonation(c.Context(), sqlc.CreateDonationParams{
 			DonaturID:  d.ID,
 			CampaignID: campaign.ID,
 			Amount:     fmt.Sprintf("%d", donationRequest.Amount),
@@ -221,15 +228,50 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 				String: donationRequest.Note,
 				Valid:  donationRequest.Note != "",
 			},
-			PaymentStatus: int32(sqlc.DonationPaymentStatusPending),
 		})
 
 		if err != nil {
 			return fmt.Errorf("failed to create donation: %w", err)
 		}
 
+		transactionID := uuid.New()
+		invoiceRequest := payment.InvoiceRequest{
+			ExternalID: transactionID,
+			Amount:     float64(donationRequest.Amount),
+			Currency:   "IDR",
+			UserDetail: payment.UserDetail{
+				Email:    donationRequest.Email,
+				FullName: donationRequest.Name,
+			},
+			ProductDetails: []payment.ProductDetail{
+				{Name: "Donation to campaig", Price: float64(donationRequest.Amount), Quantity: 1},
+			},
+		}
+
+		url, err = h.pg.CreateInvoice(invoiceRequest)
+
 		if err != nil {
-			return fmt.Errorf("failed to donate: %w", err)
+			return fmt.Errorf("failed to create invoice: %w", err)
+		}
+
+		// create payment
+		_, err = h.q.CreatePayment(c.Context(), sqlc.CreatePaymentParams{
+			TransactionID: transactionID,
+			DonaturID:     d.ID,
+			DonationID:    donation.ID,
+			CampaignID:    campaign.ID,
+			Amount:        fmt.Sprintf("%d", donationRequest.Amount),
+			Link: sql.NullString{
+				String: url,
+			},
+			Note: sql.NullString{
+				String: donationRequest.Note,
+			},
+			Status: int32(sqlc.DonationPaymentStatusPending),
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to create payment: %w", err)
 		}
 
 		return nil
@@ -249,7 +291,10 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 		response.NewResponse(
 			"success",
 			"Donation successful",
-			nil,
+			fiber.Map{
+				"message": "Thank you for your donation! You will be redirected to the payment page shortly.",
+				"link":    url,
+			},
 		),
 	)
 }

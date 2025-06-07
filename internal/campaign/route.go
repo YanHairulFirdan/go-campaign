@@ -6,11 +6,12 @@ import (
 	"go-campaign.com/internal/shared/http/middleware"
 	"go-campaign.com/internal/shared/repository"
 	"go-campaign.com/internal/shared/repository/sqlc"
+	"go-campaign.com/internal/shared/services/payment"
 )
 
 func RegisterRouteV1(router fiber.Router, q *sqlc.Queries, txStore *repository.TransactionStore) {
 	userHandler := v1.NewHandler(q)
-	publicHandler := v1.NewPublicHandler(q, txStore)
+	publicHandler := v1.NewPublicHandler(q, txStore, payment.New())
 
 	routeGroup := router.Group("/user/campaigns", middleware.Protected(), middleware.ExtractToken)
 
