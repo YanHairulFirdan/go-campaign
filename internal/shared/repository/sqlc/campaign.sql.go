@@ -73,6 +73,24 @@ func (q *Queries) Donate(ctx context.Context, arg DonateParams) error {
 	return err
 }
 
+const findCampaignByIdForUpdate = `-- name: FindCampaignByIdForUpdate :one
+SELECT id, user_id FROM campaigns
+WHERE id = $1 AND deleted_at IS NULL
+FOR UPDATE
+`
+
+type FindCampaignByIdForUpdateRow struct {
+	ID     int32 `json:"id"`
+	UserID int32 `json:"user_id"`
+}
+
+func (q *Queries) FindCampaignByIdForUpdate(ctx context.Context, id int32) (FindCampaignByIdForUpdateRow, error) {
+	row := q.db.QueryRowContext(ctx, findCampaignByIdForUpdate, id)
+	var i FindCampaignByIdForUpdateRow
+	err := row.Scan(&i.ID, &i.UserID)
+	return i, err
+}
+
 const findCampaignsBySlugForUpdate = `-- name: FindCampaignsBySlugForUpdate :one
 SELECT id, user_id FROM campaigns
 WHERE slug = $1 AND deleted_at IS NULL

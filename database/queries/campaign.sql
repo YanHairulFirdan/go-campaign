@@ -100,6 +100,11 @@ SELECT id, user_id FROM campaigns
 WHERE slug = $1 AND deleted_at IS NULL
 FOR UPDATE;
 
+-- name: FindCampaignByIdForUpdate :one
+SELECT id, user_id FROM campaigns
+WHERE id = $1 AND deleted_at IS NULL
+FOR UPDATE;
+
 -- name: Donate :exec
 UPDATE campaigns
 SET current_amount = current_amount + sqlc.arg(amount)::numeric	

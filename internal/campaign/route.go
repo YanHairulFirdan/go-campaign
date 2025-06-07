@@ -24,5 +24,7 @@ func RegisterRouteV1(router fiber.Router, q *sqlc.Queries, txStore *repository.T
 	publicCampaign.Get("/", publicHandler.Index)
 	publicCampaign.Get("/:slug", publicHandler.Show)
 	publicCampaign.Post("/:slug/donate", middleware.Protected(), publicHandler.Donate)
+
+	publicCampaign.Post("/xendit/callback", publicHandler.XenditWebhookCallback)
 	// routeGroup.Delete("/:id", userHandler.Delete)
 }

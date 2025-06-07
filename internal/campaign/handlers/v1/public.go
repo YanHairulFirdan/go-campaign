@@ -4,10 +4,12 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 	"go-campaign.com/internal/shared/http/response"
 	"go-campaign.com/internal/shared/repository"
 	"go-campaign.com/internal/shared/repository/sqlc"
@@ -295,6 +297,116 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 				"message": "Thank you for your donation! You will be redirected to the payment page shortly.",
 				"link":    url,
 			},
+		),
+	)
+}
+
+func (h *publicHandler) XenditWebhookCallback(c *fiber.Ctx) error {
+	var webhookEvent payment.XenditInvoiceWebhookResponse
+
+	if err := c.BodyParser(&webhookEvent); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Invalid request body",
+				"Failed to parse request body",
+			),
+		)
+	}
+
+	// return c.Status(fiber.StatusOK).JSON(
+	// 	response.NewResponse(
+	// 		"success",
+	// 		"Webhook callback received successfully",
+	// 		nil,
+	// 	),
+	// )
+
+	h.txStore.ExecTx(func() error {
+		// Find the payment by transaction ID
+		p, err := h.q.GetPaymentByTransactionId(c.Context(), uuid.MustParse(webhookEvent.ExternalID))
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return fmt.Errorf("payment not found for transaction ID: %s", webhookEvent.ExternalID)
+			}
+
+			return fmt.Errorf("failed to get payment: %w", err)
+		}
+
+		jsonResponse, err := webhookEvent.ToJson()
+
+		if err != nil {
+			return fmt.Errorf("failed to convert webhook event to JSON: %w", err)
+		}
+
+		_, err = h.q.UpdatePaymentFromCallback(c.Context(), sqlc.UpdatePaymentFromCallbackParams{
+			Status: int32(sqlc.DonationPaymentStatusExpired),
+			ID:     p.ID,
+			Vendor: sql.NullString{
+				String: "xendit",
+			},
+			Method: sql.NullString{
+				String: webhookEvent.PaymentMethod,
+			},
+			Response: pqtype.NullRawMessage{
+				RawMessage: []byte(jsonResponse),
+				Valid:      true,
+			},
+			PaymentDate: sql.NullTime{
+				Time: func() time.Time {
+					parsedTime, err := time.Parse("2006-01-02T15:04:05Z", webhookEvent.PaidAt)
+					if err != nil {
+						return time.Time{}
+					}
+					return parsedTime
+				}(),
+				Valid: webhookEvent.PaidAt != "",
+			},
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to update payment status: %w", err)
+		}
+
+		if webhookEvent.Status != payment.InvoiceStatusPaid {
+			return nil
+		}
+
+		log.Printf("Status: %s, Amount: %.2f, Paid Amount: %.2f, Campaign ID: %d",
+			webhookEvent.Status,
+			webhookEvent.Amount,
+			webhookEvent.PaidAmount,
+			p.CampaignID,
+		)
+
+		cp, err := h.q.FindCampaignByIdForUpdate(c.Context(), p.CampaignID)
+
+		if err != nil {
+			if err == sql.ErrNoRows {
+				return fmt.Errorf("campaign not found for ID: %d", p.CampaignID)
+			}
+
+			return fmt.Errorf("failed to find campaign: %w", err)
+		}
+
+		err = h.q.Donate(c.Context(), sqlc.DonateParams{
+			ID:     cp.ID,
+			Amount: fmt.Sprintf("%.2f", webhookEvent.Amount),
+		})
+
+		if err != nil {
+			return fmt.Errorf("failed to update campaign amount: %w", err)
+		}
+
+		return nil
+	})
+
+	return c.Status(fiber.StatusOK).JSON(
+		response.NewResponse(
+			"success",
+			"Webhook callback received successfully",
+			nil,
 		),
 	)
 }

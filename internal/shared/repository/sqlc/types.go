@@ -40,4 +40,5 @@ const (
 	DonationPaymentStatusProcessing
 	DonationPaymentStatusSuccess
 	DonationPaymentStatusFailed
+	DonationPaymentStatusExpired
 )
