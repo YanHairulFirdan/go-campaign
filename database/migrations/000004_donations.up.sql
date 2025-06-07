@@ -4,14 +4,12 @@ CREATE TABLE IF NOT EXISTS donations (
     campaign_id INT NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     note TEXT NULL,
-    payment_status INT NOT NULL DEFAULT 0, -- 0: pending, 1: processed, 2: paid, 3: failed
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(donatur_id) REFERENCES donaturs(id) ON DELETE CASCADE,
     FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
 );
--- add index for payment_status
-CREATE INDEX idx_donations_payment_status ON donations (payment_status);
+
 -- add index for created_at
 CREATE INDEX idx_donations_created_at ON donations (created_at);
 -- add index for updated_at
