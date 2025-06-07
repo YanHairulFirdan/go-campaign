@@ -17,6 +17,7 @@ type xenditPaymentGateway struct {
 
 func NewXendit() *xenditPaymentGateway {
 	secretKey := os.Getenv("XENDIT_SECRET_KEY")
+
 	if secretKey == "" {
 		panic("XENDIT_SECRET_KEY environment variable is not set")
 	}
@@ -29,6 +30,7 @@ func NewXendit() *xenditPaymentGateway {
 // CreateRequest creates a payment request using Xendit.
 func (x *xenditPaymentGateway) CreateInvoice(request InvoiceRequest) (string, error) {
 	var totalAmount float64
+
 	createInvoiceRequest := *invoice.NewCreateInvoiceRequest("some-invoice-id", request.Amount)
 	createInvoiceRequest.Currency = &request.Currency
 	createInvoiceRequest.ExternalId = request.ExternalID.String()

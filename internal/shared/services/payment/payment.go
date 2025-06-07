@@ -25,3 +25,7 @@ type InvoiceRequest struct {
 type PaymentGateway interface {
 	CreateInvoice(request InvoiceRequest) (string, error) // Returns a payment URL or ID
 }
+
+func New() PaymentGateway {
+	return NewXendit()
+}
