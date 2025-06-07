@@ -7,6 +7,9 @@ package sqlc
 import (
 	"database/sql"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 type Campaign struct {
@@ -26,14 +29,13 @@ type Campaign struct {
 }
 
 type Donation struct {
-	ID            int32          `json:"id"`
-	DonaturID     int32          `json:"donatur_id"`
-	CampaignID    int32          `json:"campaign_id"`
-	Amount        string         `json:"amount"`
-	Note          sql.NullString `json:"note"`
-	PaymentStatus int32          `json:"payment_status"`
-	CreatedAt     sql.NullTime   `json:"created_at"`
-	UpdatedAt     sql.NullTime   `json:"updated_at"`
+	ID         int32          `json:"id"`
+	DonaturID  int32          `json:"donatur_id"`
+	CampaignID int32          `json:"campaign_id"`
+	Amount     string         `json:"amount"`
+	Note       sql.NullString `json:"note"`
+	CreatedAt  sql.NullTime   `json:"created_at"`
+	UpdatedAt  sql.NullTime   `json:"updated_at"`
 }
 
 type Donatur struct {
@@ -44,6 +46,24 @@ type Donatur struct {
 	Email      sql.NullString `json:"email"`
 	CreatedAt  sql.NullTime   `json:"created_at"`
 	UpdatedAt  sql.NullTime   `json:"updated_at"`
+}
+
+type Payment struct {
+	ID            int32                 `json:"id"`
+	TransactionID uuid.UUID             `json:"transaction_id"`
+	DonaturID     int32                 `json:"donatur_id"`
+	DonationID    int32                 `json:"donation_id"`
+	CampaignID    int32                 `json:"campaign_id"`
+	Vendor        sql.NullString        `json:"vendor"`
+	Method        sql.NullString        `json:"method"`
+	Amount        string                `json:"amount"`
+	Link          sql.NullString        `json:"link"`
+	Note          sql.NullString        `json:"note"`
+	Status        int32                 `json:"status"`
+	Response      pqtype.NullRawMessage `json:"response"`
+	PaymentDate   sql.NullTime          `json:"payment_date"`
+	CreatedAt     sql.NullTime          `json:"created_at"`
+	UpdatedAt     sql.NullTime          `json:"updated_at"`
 }
 
 type User struct {

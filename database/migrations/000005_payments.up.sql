@@ -2,9 +2,10 @@ CREATE TABLE IF NOT EXISTS payments (
     id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     transaction_id UUID NOT NULL UNIQUE DEFAULT gen_random_uuid(),
     donatur_id INT NOT NULL,
+    donation_id INT NOT NULL,
     campaign_id INT NOT NULL,
-    vendor VARCHAR(50) NOT NULL, -- e.g., 'stripe', 'paypal', 'bank'
-    method VARCHAR(50) NOT NULL, -- e.g., 'credit_card', 'bank_transfer', 'paypal'
+    vendor VARCHAR(50) NULL, -- e.g., 'stripe', 'paypal', 'bank'
+    method VARCHAR(50) NULL, -- e.g., 'credit_card', 'bank_transfer', 'paypal'
     amount DECIMAL(10, 2) NOT NULL,
     link TEXT NULL, -- URL for payment gateway or transaction details
     note TEXT NULL,
@@ -14,6 +15,7 @@ CREATE TABLE IF NOT EXISTS payments (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY(donatur_id) REFERENCES donaturs(id) ON DELETE CASCADE,
+    FOREIGN KEY(donation_id) REFERENCES donations(id) ON DELETE CASCADE,
     FOREIGN KEY(campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE
 );
 
@@ -25,6 +27,8 @@ CREATE INDEX idx_payments_created_at ON payments (created_at);
 CREATE INDEX idx_payments_updated_at ON payments (updated_at);
 -- add index foreign key donatur_id
 CREATE INDEX idx_payments_donatur_id ON payments (donatur_id);
+-- add index foreign key donation_id
+CREATE INDEX idx_payments_donation_id ON payments (donation_id);
 -- add index foreign key campaign_id
 CREATE INDEX idx_payments_campaign_id ON payments (campaign_id);
 -- -- end of payments table

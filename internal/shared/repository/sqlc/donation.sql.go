@@ -11,16 +11,15 @@ import (
 )
 
 const createDonation = `-- name: CreateDonation :one
-INSERT INTO donations (donatur_id, campaign_id, amount, note, payment_status)
-VALUES ($1, $2, $3, $4, $5) RETURNING id, donatur_id, campaign_id, amount, note, payment_status, created_at, updated_at
+INSERT INTO donations (donatur_id, campaign_id, amount, note)
+VALUES ($1, $2, $3, $4) RETURNING id, donatur_id, campaign_id, amount, note, created_at, updated_at
 `
 
 type CreateDonationParams struct {
-	DonaturID     int32          `json:"donatur_id"`
-	CampaignID    int32          `json:"campaign_id"`
-	Amount        string         `json:"amount"`
-	Note          sql.NullString `json:"note"`
-	PaymentStatus int32          `json:"payment_status"`
+	DonaturID  int32          `json:"donatur_id"`
+	CampaignID int32          `json:"campaign_id"`
+	Amount     string         `json:"amount"`
+	Note       sql.NullString `json:"note"`
 }
 
 func (q *Queries) CreateDonation(ctx context.Context, arg CreateDonationParams) (Donation, error) {
@@ -29,7 +28,6 @@ func (q *Queries) CreateDonation(ctx context.Context, arg CreateDonationParams) 
 		arg.CampaignID,
 		arg.Amount,
 		arg.Note,
-		arg.PaymentStatus,
 	)
 	var i Donation
 	err := row.Scan(
@@ -38,7 +36,6 @@ func (q *Queries) CreateDonation(ctx context.Context, arg CreateDonationParams) 
 		&i.CampaignID,
 		&i.Amount,
 		&i.Note,
-		&i.PaymentStatus,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
