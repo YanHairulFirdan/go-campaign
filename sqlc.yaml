@@ -2,7 +2,7 @@ version: "2"
 sql:
   - engine: "postgresql"
     queries: "./database/queries"
-    schema: "schema.sql"
+    schema: "./database/schema.sql"
     gen:
       go:
         package: "sqlc"
@@ -25,7 +25,7 @@ sql:
               pointer: true
   - engine: "postgresql"
     queries: "./database/queries/user.sql"
-    schema: "schema.sql"
+    schema: "./database/schema.sql"
     gen:
       go:
         package: "sqlc"
@@ -33,7 +33,7 @@ sql:
         emit_json_tags: true
   - engine: "postgresql"
     queries: "./database/queries/campaign.sql"
-    schema: "schema.sql"
+    schema: "./database/schema.sql"
     gen:
       go:
         package: "sqlc"
