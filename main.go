@@ -8,11 +8,13 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"go-campaign.com/internal/infrastucture"
+	"go-campaign.com/internal/shared/http/middleware"
 )
 
 func main() {
 	app := fiber.New()
 	app.Use(logger.New())
+	app.Use(middleware.RateLimiter())
 
 	err := godotenv.Load(".env")
 
