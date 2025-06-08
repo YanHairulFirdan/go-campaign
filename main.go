@@ -8,8 +8,6 @@ import (
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 	"go-campaign.com/internal/infrastuctur"
-	"go-campaign.com/internal/shared/repository"
-	"go-campaign.com/internal/shared/repository/sqlc"
 )
 
 func main() {
@@ -23,13 +21,13 @@ func main() {
 	}
 
 	db, err := infrastuctur.InitDatabaseConnection()
-	queries := sqlc.New(db)
+	// queries := sqlc.New(db)
 
 	if err != nil {
 		panic("Error connecting to the database")
 	}
 
-	txStore := repository.NewTransactionStore(db)
+	// txStore := repository.NewTransactionStore(db)
 
 	defer func() {
 		if err := db.Close(); err != nil {
@@ -38,7 +36,8 @@ func main() {
 	}()
 
 	infrastuctur.InitValidation(db)
-	infrastuctur.RegisterRoute(app, queries, txStore)
+	// infrastuctur.RegisterRoute(app, queries, txStore, db)
+	infrastuctur.RegisterRoute(app, db)
 
 	port := os.Getenv("APP_PORT")
 

@@ -31,7 +31,9 @@ WHERE
 	status = sqlc.arg(status)::integer;
 
 -- name: GetUserCampaignById :one
-SELECT * FROM campaigns
+SELECT id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status,
+	   created_at::TIMESTAMP, updated_at::TIMESTAMP
+FROM campaigns
 WHERE id = $1 AND user_id = $2;
 
 -- name: CreateCampaign :one

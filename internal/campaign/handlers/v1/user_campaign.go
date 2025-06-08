@@ -6,19 +6,19 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	"go-campaign.com/internal/campaign/entities"
+	"go-campaign.com/internal/campaign/services"
 	"go-campaign.com/internal/shared/http/response"
-	"go-campaign.com/internal/shared/repository/sqlc"
 	"go-campaign.com/pkg/validation"
 )
 
 type handler struct {
-	q *sqlc.Queries
+	s *services.UserCampaignService
 }
 
 // NewHandler creates a new user handler with the given repository.
-func NewHandler(q *sqlc.Queries) *handler {
+func NewHandler(s *services.UserCampaignService) *handler {
 	return &handler{
-		q: q,
+		s: s,
 	}
 }
 
@@ -29,38 +29,16 @@ func (h *handler) Index(c *fiber.Ctx) error {
 	page := c.QueryInt("page", 1)
 	perPage := c.QueryInt("per_page", 10)
 
-	pb := response.NewPaginationBuilder(
-		perPage,
-		page,
-		func() ([]sqlc.GetPaginatedUserCampaignRow, error) {
-			campaigns, err := h.q.GetPaginatedUserCampaign(c.Context(), sqlc.GetPaginatedUserCampaignParams{
-				UserID: int32(userID),
-				Limit:  int32(perPage),
-				Offset: int32((page - 1) * perPage),
-				Title:  c.Query("title", ""),
-				Status: int32(c.QueryInt("status", int(entities.StatusActive))),
-			})
+	title := c.Query("title", "")
+	status := c.QueryInt("status", int(entities.StatusDraft))
+	campaigns, totalCount, err := h.s.GetPaginatedUserCampaigns(
+		c.Context(), services.PaginatedCampaignRequest{
+			UserID: int32(userID),
+			Limit:  int32(perPage),
+			Title:  title,
+			Status: int32(status),
+		})
 
-			if err != nil {
-				return nil, err
-			}
-
-			return campaigns, nil
-		},
-		func() (int, error) {
-			totalCount, err := h.q.GetTotalUserCampaigns(c.Context(), sqlc.GetTotalUserCampaignsParams{
-				UserID: int32(userID),
-				Title:  c.Query("title", ""),
-				Status: int32(c.QueryInt("status", int(entities.StatusActive))),
-			})
-			if err != nil {
-				return 0, err
-			}
-			return int(totalCount), nil
-		},
-	)
-
-	pagination, err := pb.Build()
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			response.NewErrorResponse(
@@ -71,7 +49,16 @@ func (h *handler) Index(c *fiber.Ctx) error {
 		)
 	}
 
-	return c.Status(200).JSON(pagination)
+	return c.Status(200).JSON(response.NewPagination(
+		"success",
+		"Campaigns retrieved successfully",
+		campaigns,
+		response.NewMeta(
+			page,
+			perPage,
+			int(totalCount),
+		)),
+	)
 }
 
 // createCampaign creates a new campaign for a user.
@@ -112,46 +99,22 @@ func (h *handler) Create(c *fiber.Ctx) error {
 		)
 	}
 
-	startDate, err := time.Parse(time.DateTime, req.StartDate)
-
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Invalid start date format",
-				"Start date must be in date-time format (e.g., 2023-10-01 12:00:00)",
-			),
-		)
-	}
-
-	endDate, err := time.Parse(time.DateTime, req.EndDate)
-
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Invalid end date format",
-				"End date must be in date-time format (e.g., 2023-10-01 12:00:00)",
-			),
-		)
-	}
-
-	campaign, err := h.q.CreateCampaign(c.Context(), sqlc.CreateCampaignParams{
+	campaign, err := h.s.CreateCampaign(c.Context(), services.CreateCampaignRequest{
 		UserID:       int32(userID),
 		Title:        req.Title,
-		Description:  &req.Description,
+		Description:  req.Description,
 		Slug:         req.Slug,
-		TargetAmount: strconv.FormatFloat(float64(req.TargetAmount), 'f', -1, 32),
-		StartDate:    startDate,
-		EndDate:      endDate,
-		Status:       int32(req.Status),
+		TargetAmount: req.TargetAmount,
+		StartDate:    req.StartDate,
+		EndDate:      req.EndDate,
+		Status:       int(req.Status),
 	})
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			response.NewErrorResponse(
 				"error",
-				"Internal server error",
+				"Failed to create campaign",
 				err.Error(),
 			),
 		)
@@ -190,10 +153,7 @@ func (h *handler) Show(c *fiber.Ctx) error {
 		)
 	}
 
-	campaign, err := h.q.GetUserCampaignById(c.Context(), sqlc.GetUserCampaignByIdParams{
-		ID:     int32(campaignID),
-		UserID: int32(userID),
-	})
+	campaign, err := h.s.FindUserCampaign(c.Context(), int32(userID), int32(campaignID))
 
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(
@@ -229,10 +189,7 @@ func (h *handler) Update(c *fiber.Ctx) error {
 		)
 	}
 
-	cp, err := h.q.GetUserCampaignById(c.Context(), sqlc.GetUserCampaignByIdParams{
-		ID:     int32(campaignID),
-		UserID: int32(userID),
-	})
+	cp, err := h.s.FindUserCampaign(c.Context(), int32(userID), int32(campaignID))
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(
 			response.NewErrorResponse(
@@ -281,45 +238,17 @@ func (h *handler) Update(c *fiber.Ctx) error {
 		)
 	}
 
-	// Update the campaign with the new data
-	cp.Title = req.Title
-	cp.Description = &req.Description
-	cp.Slug = req.Slug
-	cp.TargetAmount = strconv.FormatFloat(float64(req.TargetAmount), 'f', -1, 32)
-	cp.StartDate, err = time.Parse(time.DateTime, req.StartDate)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Invalid start date format",
-				"Start date must be in date-time format (e.g., 2023-10-01 12:00:00)",
-			),
-		)
-	}
-	cp.EndDate, err = time.Parse(time.DateTime, req.EndDate)
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Invalid end date format",
-				"End date must be in date-time format (e.g., 2023-10-01 12:00:00)",
-			),
-		)
-	}
-
-	cp.Status = int32(entities.Status(req.Status))
-
-	updatedCampaign, err := h.q.UpdateCampaign(c.Context(), sqlc.UpdateCampaignParams{
-		Title:        cp.Title,
-		Description:  cp.Description,
-		Slug:         cp.Slug,
-		TargetAmount: cp.TargetAmount,
-		StartDate:    cp.StartDate,
-		EndDate:      cp.EndDate,
-		Status:       cp.Status,
-		UserID:       cp.UserID,
-		ID:           cp.ID,
+	updatedCampaign, err := h.s.UpdateCampaign(c.Context(), cp.ID, services.CreateCampaignRequest{
+		Title:        req.Title,
+		Description:  req.Description,
+		Slug:         req.Slug,
+		TargetAmount: req.TargetAmount,
+		StartDate:    req.StartDate,
+		EndDate:      req.EndDate,
+		Status:       int(req.Status),
+		UserID:       int32(userID),
 	})
+
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			response.NewErrorResponse(

@@ -21,7 +21,7 @@ type CreateCampaignParams struct {
 	Description  *string   `json:"description"`
 	Slug         string    `json:"slug"`
 	UserID       int32     `json:"user_id"`
-	TargetAmount string    `json:"target_amount"`
+	TargetAmount *float32  `json:"target_amount"`
 	StartDate    time.Time `json:"start_date"`
 	EndDate      time.Time `json:"end_date"`
 	Status       int32     `json:"status"`
@@ -126,7 +126,7 @@ type GetCampaignBySlugRow struct {
 	Title         string    `json:"title"`
 	Description   *string   `json:"description"`
 	Slug          string    `json:"slug"`
-	TargetAmount  string    `json:"target_amount"`
+	TargetAmount  *float32  `json:"target_amount"`
 	CurrentAmount *float32  `json:"current_amount"`
 	StartDate     time.Time `json:"start_date"`
 	EndDate       time.Time `json:"end_date"`
@@ -189,7 +189,7 @@ type GetCampaignsRow struct {
 	Title         string    `json:"title"`
 	Slug          string    `json:"slug"`
 	CurrentAmount *float32  `json:"current_amount"`
-	TargetAmount  string    `json:"target_amount"`
+	TargetAmount  *float32  `json:"target_amount"`
 	Progress      string    `json:"progress"`
 	StartDate     time.Time `json:"start_date"`
 	EndDate       time.Time `json:"end_date"`
@@ -366,7 +366,7 @@ type GetUserCampaignByIdRow struct {
 	Description   *string   `json:"description"`
 	Slug          string    `json:"slug"`
 	UserID        int32     `json:"user_id"`
-	TargetAmount  string    `json:"target_amount"`
+	TargetAmount  *float32  `json:"target_amount"`
 	CurrentAmount *float32  `json:"current_amount"`
 	StartDate     time.Time `json:"start_date"`
 	EndDate       time.Time `json:"end_date"`
@@ -439,7 +439,7 @@ type UpdateCampaignParams struct {
 	Title        string    `json:"title"`
 	Description  *string   `json:"description"`
 	Slug         string    `json:"slug"`
-	TargetAmount string    `json:"target_amount"`
+	TargetAmount *float32  `json:"target_amount"`
 	StartDate    time.Time `json:"start_date"`
 	EndDate      time.Time `json:"end_date"`
 	Status       int32     `json:"status"`
@@ -453,7 +453,7 @@ type UpdateCampaignRow struct {
 	Description   *string   `json:"description"`
 	Slug          string    `json:"slug"`
 	UserID        int32     `json:"user_id"`
-	TargetAmount  string    `json:"target_amount"`
+	TargetAmount  *float32  `json:"target_amount"`
 	CurrentAmount *float32  `json:"current_amount"`
 	StartDate     time.Time `json:"start_date"`
 	EndDate       time.Time `json:"end_date"`
