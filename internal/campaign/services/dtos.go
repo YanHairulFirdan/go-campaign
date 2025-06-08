@@ -31,3 +31,12 @@ type Campaign struct {
 	Status        int       `json:"status"` // 0: Draft, 1: Active
 	CurrentAmount float32   `json:"current_amount"`
 }
+
+type DonationRequest struct {
+	CampaignID int32
+	UserID     int32
+	Amount     float32
+	Name       string
+	Email      string
+	Note       *string
+}

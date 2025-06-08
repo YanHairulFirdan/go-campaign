@@ -8,15 +8,18 @@ import (
 	"go-campaign.com/internal/campaign/repository/sqlc"
 	"go-campaign.com/internal/campaign/services"
 	"go-campaign.com/internal/shared/http/middleware"
+	"go-campaign.com/internal/shared/repository"
+	"go-campaign.com/internal/shared/services/payment"
 )
 
 func RegisterRouteV1(router fiber.Router, db *sql.DB) {
 
-	userService := services.NewUserCampaignService(
-		sqlc.New(db),
-	)
+	q := sqlc.New(db) // Now using the shared repository package
+	txStore := repository.NewTransactionStore(db)
+
+	userService := services.NewUserCampaignService(q)
 	userHandler := v1.NewHandler(userService)
-	// publicHandler := v1.NewPublicHandler(q, txStore, payment.New())
+	publicHandler := v1.NewPublicHandler(services.NewCampaignService(q, txStore, payment.New()))
 
 	routeGroup := router.Group("/user/campaigns", middleware.Protected(), middleware.ExtractToken)
 
@@ -25,12 +28,12 @@ func RegisterRouteV1(router fiber.Router, db *sql.DB) {
 	routeGroup.Get("/:id", userHandler.Show)
 	routeGroup.Put("/:id", userHandler.Update)
 
-	// publicCampaign := router.Group("/campaigns")
-	// publicCampaign.Get("/", publicHandler.Index)
-	// publicCampaign.Get("/:slug", publicHandler.Show)
-	// publicCampaign.Post("/:slug/donate", middleware.Protected(), publicHandler.Donate)
-	// publicCampaign.Get("/:slug/donaturs", publicHandler.Donatur)
+	publicCampaign := router.Group("/campaigns")
+	publicCampaign.Get("/", publicHandler.Index)
+	publicCampaign.Get("/:slug", publicHandler.Show)
+	publicCampaign.Post("/:slug/donate", middleware.Protected(), middleware.ExtractToken, publicHandler.Donate)
+	// publicCampaign.Get("/:slug`/donaturs", publicHandler.Donatur)
 
-	// publicCampaign.Post("/xendit/callback", publicHandler.XenditWebhookCallback)
+	publicCampaign.Post("/xendit/callback", publicHandler.XenditWebhookCallback)
 	// routeGroup.Delete("/:id", userHandler.Delete)
 }

@@ -7,7 +7,11 @@ package sqlc
 
 import (
 	"context"
+	"database/sql"
 	"time"
+
+	"github.com/google/uuid"
+	"github.com/sqlc-dev/pqtype"
 )
 
 const createCampaign = `-- name: CreateCampaign :one
@@ -53,6 +57,119 @@ func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const createDonation = `-- name: CreateDonation :one
+INSERT INTO donations (donatur_id, campaign_id, amount, note)
+VALUES ($1, $2, $3, $4) RETURNING id, donatur_id, campaign_id, amount, note, created_at, updated_at
+`
+
+type CreateDonationParams struct {
+	DonaturID  int32          `json:"donatur_id"`
+	CampaignID int32          `json:"campaign_id"`
+	Amount     string         `json:"amount"`
+	Note       sql.NullString `json:"note"`
+}
+
+func (q *Queries) CreateDonation(ctx context.Context, arg CreateDonationParams) (Donation, error) {
+	row := q.db.QueryRowContext(ctx, createDonation,
+		arg.DonaturID,
+		arg.CampaignID,
+		arg.Amount,
+		arg.Note,
+	)
+	var i Donation
+	err := row.Scan(
+		&i.ID,
+		&i.DonaturID,
+		&i.CampaignID,
+		&i.Amount,
+		&i.Note,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createDonatur = `-- name: CreateDonatur :one
+INSERT INTO donaturs (name, email, user_id, campaign_id)
+VALUES ($1, $2, $3, $4) RETURNING id, user_id, campaign_id, name, email, created_at, updated_at
+`
+
+type CreateDonaturParams struct {
+	Name       string         `json:"name"`
+	Email      sql.NullString `json:"email"`
+	UserID     int32          `json:"user_id"`
+	CampaignID int32          `json:"campaign_id"`
+}
+
+func (q *Queries) CreateDonatur(ctx context.Context, arg CreateDonaturParams) (Donatur, error) {
+	row := q.db.QueryRowContext(ctx, createDonatur,
+		arg.Name,
+		arg.Email,
+		arg.UserID,
+		arg.CampaignID,
+	)
+	var i Donatur
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.CampaignID,
+		&i.Name,
+		&i.Email,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createPayment = `-- name: CreatePayment :one
+INSERT INTO payments (transaction_id, donatur_id, donation_id, campaign_id, amount, link, note, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+RETURNING id, transaction_id, donatur_id, donation_id, campaign_id, vendor, method, amount, link, note, status, response, payment_date, created_at, updated_at
+`
+
+type CreatePaymentParams struct {
+	TransactionID uuid.UUID      `json:"transaction_id"`
+	DonaturID     int32          `json:"donatur_id"`
+	DonationID    int32          `json:"donation_id"`
+	CampaignID    int32          `json:"campaign_id"`
+	Amount        string         `json:"amount"`
+	Link          sql.NullString `json:"link"`
+	Note          sql.NullString `json:"note"`
+	Status        int32          `json:"status"`
+}
+
+func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error) {
+	row := q.db.QueryRowContext(ctx, createPayment,
+		arg.TransactionID,
+		arg.DonaturID,
+		arg.DonationID,
+		arg.CampaignID,
+		arg.Amount,
+		arg.Link,
+		arg.Note,
+		arg.Status,
+	)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.TransactionID,
+		&i.DonaturID,
+		&i.DonationID,
+		&i.CampaignID,
+		&i.Vendor,
+		&i.Method,
+		&i.Amount,
+		&i.Link,
+		&i.Note,
+		&i.Status,
+		&i.Response,
+		&i.PaymentDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -308,6 +425,33 @@ func (q *Queries) GetPaginatedUserCampaign(ctx context.Context, arg GetPaginated
 	return items, nil
 }
 
+const getPaymentByTransactionId = `-- name: GetPaymentByTransactionId :one
+SELECT id, transaction_id, donatur_id, donation_id, campaign_id, vendor, method, amount, link, note, status, response, payment_date, created_at, updated_at FROM payments WHERE transaction_id = $1
+`
+
+func (q *Queries) GetPaymentByTransactionId(ctx context.Context, transactionID uuid.UUID) (Payment, error) {
+	row := q.db.QueryRowContext(ctx, getPaymentByTransactionId, transactionID)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.TransactionID,
+		&i.DonaturID,
+		&i.DonationID,
+		&i.CampaignID,
+		&i.Vendor,
+		&i.Method,
+		&i.Amount,
+		&i.Link,
+		&i.Note,
+		&i.Status,
+		&i.Response,
+		&i.PaymentDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getTotalCampaigns = `-- name: GetTotalCampaigns :one
 SELECT COUNT(*) AS total
 FROM campaigns
@@ -486,6 +630,58 @@ func (q *Queries) UpdateCampaign(ctx context.Context, arg UpdateCampaignParams) 
 		&i.StartDate,
 		&i.EndDate,
 		&i.Status,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const updatePaymentFromCallback = `-- name: UpdatePaymentFromCallback :one
+UPDATE payments
+SET 
+    status = $2, 
+    updated_at = CURRENT_TIMESTAMP,
+    vendor = $3,
+    method = $4,
+    response = $5,
+    payment_date = $6
+WHERE id = $1
+RETURNING id, transaction_id, donatur_id, donation_id, campaign_id, vendor, method, amount, link, note, status, response, payment_date, created_at, updated_at
+`
+
+type UpdatePaymentFromCallbackParams struct {
+	ID          int32                 `json:"id"`
+	Status      int32                 `json:"status"`
+	Vendor      sql.NullString        `json:"vendor"`
+	Method      sql.NullString        `json:"method"`
+	Response    pqtype.NullRawMessage `json:"response"`
+	PaymentDate sql.NullTime          `json:"payment_date"`
+}
+
+func (q *Queries) UpdatePaymentFromCallback(ctx context.Context, arg UpdatePaymentFromCallbackParams) (Payment, error) {
+	row := q.db.QueryRowContext(ctx, updatePaymentFromCallback,
+		arg.ID,
+		arg.Status,
+		arg.Vendor,
+		arg.Method,
+		arg.Response,
+		arg.PaymentDate,
+	)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.TransactionID,
+		&i.DonaturID,
+		&i.DonationID,
+		&i.CampaignID,
+		&i.Vendor,
+		&i.Method,
+		&i.Amount,
+		&i.Link,
+		&i.Note,
+		&i.Status,
+		&i.Response,
+		&i.PaymentDate,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

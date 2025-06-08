@@ -10,38 +10,6 @@ import (
 	"database/sql"
 )
 
-const createDonatur = `-- name: CreateDonatur :one
-INSERT INTO donaturs (name, email, user_id, campaign_id)
-VALUES ($1, $2, $3, $4) RETURNING id, user_id, campaign_id, name, email, created_at, updated_at
-`
-
-type CreateDonaturParams struct {
-	Name       string         `json:"name"`
-	Email      sql.NullString `json:"email"`
-	UserID     int32          `json:"user_id"`
-	CampaignID int32          `json:"campaign_id"`
-}
-
-func (q *Queries) CreateDonatur(ctx context.Context, arg CreateDonaturParams) (Donatur, error) {
-	row := q.db.QueryRowContext(ctx, createDonatur,
-		arg.Name,
-		arg.Email,
-		arg.UserID,
-		arg.CampaignID,
-	)
-	var i Donatur
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.CampaignID,
-		&i.Name,
-		&i.Email,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
 const getCampaignTotalPaidDonaturs = `-- name: GetCampaignTotalPaidDonaturs :one
 SELECT COUNT(*) AS total FROM donaturs
 WHERE donaturs.campaign_id IN (
