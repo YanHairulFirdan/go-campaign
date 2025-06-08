@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"go-campaign.com/internal/infrastuctur"
+	"go-campaign.com/internal/infrastucture"
 )
 
 func main() {
@@ -20,7 +20,7 @@ func main() {
 		panic("Error loading .env file")
 	}
 
-	db, err := infrastuctur.InitDatabaseConnection()
+	db, err := infrastucture.InitDatabaseConnection()
 	// queries := sqlc.New(db)
 
 	if err != nil {
@@ -35,9 +35,9 @@ func main() {
 		}
 	}()
 
-	infrastuctur.InitValidation(db)
-	// infrastuctur.RegisterRoute(app, queries, txStore, db)
-	infrastuctur.RegisterRoute(app, db)
+	infrastucture.InitValidation(db)
+	// infrastucture.RegisterRoute(app, queries, txStore, db)
+	infrastucture.RegisterRoute(app, db)
 
 	port := os.Getenv("APP_PORT")
 
