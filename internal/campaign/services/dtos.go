@@ -40,3 +40,16 @@ type DonationRequest struct {
 	Email      string
 	Note       *string
 }
+
+type GetDonaturListRequest struct {
+	Slug   string
+	Limit  int32
+	Offset int32
+}
+
+type DonaturList struct {
+	ID     int     `json:"id"`
+	Name   string  `json:"name"`
+	Email  string  `json:"email"`
+	Amount float32 `json:"amount"`
+}

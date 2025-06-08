@@ -139,3 +139,35 @@ RETURNING *;
 INSERT INTO payments (transaction_id, donatur_id, donation_id, campaign_id, amount, link, note, status)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
+
+-- name: GetPaginatedDonaturs :many
+SELECT 
+	d.id, 
+	d.name, 
+	COALESCE(d.email, '') AS email,
+	p.amount::real AS total_donated
+FROM donaturs d
+JOIN (
+	SELECT donatur_id, SUM(amount) AS amount
+	FROM donations
+	GROUP BY donatur_id
+) p ON d.id = p.donatur_id
+WHERE d.campaign_id = (
+	SELECT id FROM campaigns WHERE slug = $1 AND deleted_at IS NULL LIMIT 1
+)
+AND EXISTS (
+	SELECT 1 FROM payments
+	WHERE status = 5 AND donatur_id = d.id
+)
+ORDER BY d.created_at DESC
+LIMIT $2 OFFSET $3;
+
+-- name: GetCampaignTotalPaidDonaturs :one
+SELECT COUNT(*) AS total FROM donaturs
+WHERE donaturs.campaign_id IN (
+        SELECT id FROM campaigns WHERE slug  = $1 AND deleted_at IS NULL 
+    ) 
+	AND EXISTS (
+		SELECT 1 FROM payments
+		WHERE status = 5 AND donatur_id = donaturs.id
+	);

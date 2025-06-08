@@ -271,6 +271,24 @@ func (q *Queries) GetCampaignBySlug(ctx context.Context, slug string) (GetCampai
 	return i, err
 }
 
+const getCampaignTotalPaidDonaturs = `-- name: GetCampaignTotalPaidDonaturs :one
+SELECT COUNT(*) AS total FROM donaturs
+WHERE donaturs.campaign_id IN (
+        SELECT id FROM campaigns WHERE slug  = $1 AND deleted_at IS NULL 
+    ) 
+	AND EXISTS (
+		SELECT 1 FROM payments
+		WHERE status = 5 AND donatur_id = donaturs.id
+	)
+`
+
+func (q *Queries) GetCampaignTotalPaidDonaturs(ctx context.Context, slug string) (int64, error) {
+	row := q.db.QueryRowContext(ctx, getCampaignTotalPaidDonaturs, slug)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
 const getCampaigns = `-- name: GetCampaigns :many
 SELECT id, title, slug,
 		current_amount, target_amount,
@@ -332,6 +350,70 @@ func (q *Queries) GetCampaigns(ctx context.Context, arg GetCampaignsParams) ([]G
 			&i.StartDate,
 			&i.EndDate,
 			&i.Status,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPaginatedDonaturs = `-- name: GetPaginatedDonaturs :many
+SELECT 
+	d.id, 
+	d.name, 
+	COALESCE(d.email, '') AS email,
+	p.amount::real AS total_donated
+FROM donaturs d
+JOIN (
+	SELECT donatur_id, SUM(amount) AS amount
+	FROM donations
+	GROUP BY donatur_id
+) p ON d.id = p.donatur_id
+WHERE d.campaign_id = (
+	SELECT id FROM campaigns WHERE slug = $1 AND deleted_at IS NULL LIMIT 1
+)
+AND EXISTS (
+	SELECT 1 FROM payments
+	WHERE status = 5 AND donatur_id = d.id
+)
+ORDER BY d.created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetPaginatedDonatursParams struct {
+	Slug   string `json:"slug"`
+	Limit  int32  `json:"limit"`
+	Offset int32  `json:"offset"`
+}
+
+type GetPaginatedDonatursRow struct {
+	ID           int32   `json:"id"`
+	Name         string  `json:"name"`
+	Email        string  `json:"email"`
+	TotalDonated float32 `json:"total_donated"`
+}
+
+func (q *Queries) GetPaginatedDonaturs(ctx context.Context, arg GetPaginatedDonatursParams) ([]GetPaginatedDonatursRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPaginatedDonaturs, arg.Slug, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetPaginatedDonatursRow
+	for rows.Next() {
+		var i GetPaginatedDonatursRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Email,
+			&i.TotalDonated,
 		); err != nil {
 			return nil, err
 		}

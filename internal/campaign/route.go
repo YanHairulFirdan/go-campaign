@@ -32,7 +32,7 @@ func RegisterRouteV1(router fiber.Router, db *sql.DB) {
 	publicCampaign.Get("/", publicHandler.Index)
 	publicCampaign.Get("/:slug", publicHandler.Show)
 	publicCampaign.Post("/:slug/donate", middleware.Protected(), middleware.ExtractToken, publicHandler.Donate)
-	// publicCampaign.Get("/:slug`/donaturs", publicHandler.Donatur)
+	publicCampaign.Get("/:slug/donaturs", publicHandler.Donatur)
 
 	publicCampaign.Post("/xendit/callback", publicHandler.XenditWebhookCallback)
 	// routeGroup.Delete("/:id", userHandler.Delete)

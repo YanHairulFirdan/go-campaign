@@ -228,3 +228,23 @@ func (s *CampaignService) UpdatePaymentFromCallback(ctx context.Context, webhook
 
 	return err
 }
+
+func (s *CampaignService) GetDonatur(ctx context.Context, request GetDonaturListRequest) ([]sqlc.GetPaginatedDonatursRow, int, error) {
+	donaturs, err := s.q.GetPaginatedDonaturs(ctx, sqlc.GetPaginatedDonatursParams{
+		Slug:   request.Slug,
+		Limit:  request.Limit,
+		Offset: request.Offset,
+	})
+
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get paginated donaturs: %w", err)
+	}
+
+	totalCount, err := s.q.GetCampaignTotalPaidDonaturs(ctx, request.Slug)
+
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to get total paid donaturs: %w", err)
+	}
+
+	return donaturs, int(totalCount), nil
+}

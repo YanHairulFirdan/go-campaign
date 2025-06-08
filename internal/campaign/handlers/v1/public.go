@@ -197,13 +197,6 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 }
 
 func (h *publicHandler) XenditWebhookCallback(c *fiber.Ctx) error {
-	// return c.Status(fiber.StatusOK).JSON(
-	// 	response.NewResponse(
-	// 		"success",
-	// 		"Webhook callback received successfully",
-	// 		nil,
-	// 	),
-	// )
 	var webhookEvent payment.XenditInvoiceWebhookResponse
 
 	if err := c.BodyParser(&webhookEvent); err != nil {
@@ -236,71 +229,54 @@ func (h *publicHandler) XenditWebhookCallback(c *fiber.Ctx) error {
 	)
 }
 
-// func (h *publicHandler) Donatur(c *fiber.Ctx) error {
-// 	slug := c.Params("slug")
-// 	if slug == "" {
-// 		return c.Status(fiber.StatusBadRequest).JSON(
-// 			response.NewErrorResponse(
-// 				"error",
-// 				"Slug is required",
-// 				"Slug parameter cannot be empty",
-// 			),
-// 		)
-// 	}
+func (h *publicHandler) Donatur(c *fiber.Ctx) error {
+	slug := c.Params("slug")
+	if slug == "" {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Slug is required",
+				"Slug parameter cannot be empty",
+			),
+		)
+	}
 
-// 	page := c.QueryInt("page", 1)
-// 	if page <= 0 {
-// 		page = 1
-// 	}
+	page := c.QueryInt("page", 1)
+	if page <= 0 {
+		page = 1
+	}
 
-// 	perPage := c.QueryInt("per_page", 10)
-// 	if perPage <= 0 {
-// 		perPage = 10
-// 	}
+	perPage := c.QueryInt("per_page", 10)
+	if perPage <= 0 {
+		perPage = 10
+	}
 
-// 	pb := response.NewPaginationBuilder(
-// 		perPage,
-// 		page,
-// 		func() ([]sqlc.GetPaginatedDonatursRow, error) {
-// 			donaturs, err := h.q.GetPaginatedDonaturs(c.Context(), sqlc.GetPaginatedDonatursParams{
-// 				Slug:   slug,
-// 				Limit:  int32(perPage),
-// 				Offset: int32((page - 1) * perPage),
-// 			})
-// 			if err != nil {
-// 				return nil, err
-// 			}
+	donaturs, totalCount, err := h.s.GetDonatur(c.Context(), services.GetDonaturListRequest{
+		Slug:   slug,
+		Limit:  int32(perPage),
+		Offset: int32((page - 1) * perPage),
+	})
 
-// 			return donaturs, nil
-// 		},
-// 		func() (int, error) {
-// 			count, err := h.q.GetCampaignTotalPaidDonaturs(c.Context(), slug)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Internal server error",
+				err.Error(),
+			),
+		)
+	}
 
-// 			if err != nil {
-// 				return 0, err
-// 			}
-
-// 			return int(count), nil
-// 		},
-// 	)
-
-// 	donaturs, err := pb.Build()
-
-// 	if err != nil {
-// 		return c.Status(fiber.StatusInternalServerError).JSON(
-// 			response.NewErrorResponse(
-// 				"error",
-// 				"Internal server error",
-// 				err.Error(),
-// 			),
-// 		)
-// 	}
-
-// 	return c.Status(200).JSON(
-// 		response.NewResponse(
-// 			"success",
-// 			"Donaturs retrieved successfully",
-// 			donaturs,
-// 		),
-// 	)
-// }
+	return c.Status(200).JSON(
+		response.NewPagination(
+			"success",
+			"Donaturs retrieved successfully",
+			donaturs,
+			response.NewMeta(
+				page,
+				perPage,
+				totalCount,
+			),
+		),
+	)
+}
