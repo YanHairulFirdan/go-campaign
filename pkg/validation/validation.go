@@ -43,20 +43,50 @@ func Init(db DatabaseValidationRepository) error {
 }
 
 func registerCustomRules() {
-	// Here you can register custom validation rules if needed
-	// For example:
-	// validate.RegisterValidation("unique", UniqueRule(db))
-	// This is where you would add any custom validation logic
-	// such as checking for unique values in the database.
-
 	validate.RegisterValidation("unique", uniqueRule)
 
 	validate.RegisterTranslation("unique", translator, func(ut ut.Translator) error {
 		return ut.Add("unique", "{0} must be unique", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
-		// Return a custom error message instead of calling fe.Translate(ut)
-		fieldName := fe.Field() // Get the field name
+
+		fieldName := fe.Field()
 		return fmt.Sprintf("%s must be unique", fieldName)
+	})
+
+	validate.RegisterValidation("file_required", fileRequiredRule)
+	validate.RegisterTranslation("file_required", translator, func(ut ut.Translator) error {
+		return ut.Add("file_required", "{0} is required", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+
+		fieldName := fe.Field()
+		return fmt.Sprintf("%s is required", fieldName)
+	})
+
+	validate.RegisterValidation("file_max_size", fileMaxSizeRule)
+	validate.RegisterTranslation("file_max_size", translator, func(ut ut.Translator) error {
+		return ut.Add("file_max_size", "{0} exceeds the maximum allowed size", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+
+		fieldName := fe.Field()
+		return fmt.Sprintf("%s exceeds the maximum allowed size", fieldName)
+	})
+
+	validate.RegisterValidation("file_min_size", fileMinSizeRule)
+	validate.RegisterTranslation("file_min_size", translator, func(ut ut.Translator) error {
+		return ut.Add("file_min_size", "{0} is below the minimum required size", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+
+		fieldName := fe.Field()
+		return fmt.Sprintf("%s is below the minimum required size", fieldName)
+	})
+
+	validate.RegisterValidation("file_mime_type", fileMimeTypeRule)
+	validate.RegisterTranslation("file_mime_type", translator, func(ut ut.Translator) error {
+		return ut.Add("file_mime_type", "{0} has an invalid file type", true)
+	}, func(ut ut.Translator, fe validator.FieldError) string {
+
+		fieldName := fe.Field()
+		return fmt.Sprintf("%s has an invalid file type", fieldName)
 	})
 }
 
@@ -77,7 +107,7 @@ func prepareTranslator() error {
 	uni := ut.New(english, english)
 
 	var found bool
-	translator, found = uni.GetTranslator("en") // Assign to the global translator variable
+	translator, found = uni.GetTranslator("en")
 
 	if !found {
 		return errors.New("translator not found")
