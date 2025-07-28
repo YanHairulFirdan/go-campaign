@@ -140,11 +140,13 @@ func (h *handler) Create(c *fiber.Ctx) error {
 	}
 
 	images := make([]string, 0, len(req.Images))
-	// looping through all uploaded images and saving them
+	baseFileURL := os.Getenv("BASE_FILE_URL")
+
 	for _, fileHeader := range req.Images {
 		extension := strings.ToLower(fileHeader.Filename[strings.LastIndex(fileHeader.Filename, "."):])
 		fileHeader.Filename = fmt.Sprintf("%d%s", time.Now().UnixNano(), extension)
-		images = append(images, fileHeader.Filename)
+
+		images = append(images, fmt.Sprintf("%s/uploads/%s", baseFileURL, fileHeader.Filename))
 		c.SaveFile(fileHeader, fmt.Sprintf("./%s/%s", uploadDir, fileHeader.Filename))
 	}
 
