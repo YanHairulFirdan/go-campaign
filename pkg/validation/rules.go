@@ -49,21 +49,20 @@ func uniqueRule(fl validator.FieldLevel) bool {
 }
 
 func fileRequiredRule(fl validator.FieldLevel) bool {
-	file, ok := fl.Field().Interface().(*multipart.FileHeader)
+	file, ok := fl.Field().Interface().(multipart.FileHeader)
 
-	return ok && file != nil && file.Size > 0 // Check if the file is present and has a size greater than 0
+	return ok && file.Size > 0 // Check if the file is present and has a size greater than 0
 }
 
 func fileMaxSizeRule(fl validator.FieldLevel) bool {
-	file, ok := fl.Field().Interface().(*multipart.FileHeader)
-	if !ok || file == nil {
+	file, ok := fl.Field().Interface().(multipart.FileHeader)
+	if !ok {
 		return false // Not a valid file header
 	}
 
 	maxSizeParam := fl.Param() // Get the max size from the validation tag parameter
 
 	size, err := extractFileSize(maxSizeParam) // Extract size and unit type
-
 	if err != nil {
 		log.Printf("Invalid max size parameter: %v\n", err)
 		return false // Invalid max size parameter
@@ -95,8 +94,8 @@ func extractFileSize(fileSize string) (int64, error) {
 
 // min size rule
 func fileMinSizeRule(fl validator.FieldLevel) bool {
-	file, ok := fl.Field().Interface().(*multipart.FileHeader)
-	if !ok || file == nil {
+	file, ok := fl.Field().Interface().(multipart.FileHeader)
+	if !ok {
 		return false // Not a valid file header
 	}
 
@@ -113,17 +112,21 @@ func fileMinSizeRule(fl validator.FieldLevel) bool {
 }
 
 func fileMimeTypeRule(fl validator.FieldLevel) bool {
-	file, ok := fl.Field().Interface().(*multipart.FileHeader)
-	if !ok || file == nil {
+	file, ok := fl.Field().Interface().(multipart.FileHeader)
+	if !ok {
 		return false // Not a valid file header
 	}
 
-	mimes := strings.Split(fl.Param(), ",") // Get the allowed MIME types from the validation tag parameter
+	// log param
+	log.Printf("param %v", fl.Param())
+	mimes := strings.Split(fl.Param(), "-") // Get the allowed MIME types from the validation tag parameter
+	log.Printf("Allowed MIME types: %v\n", mimes)
 	if len(mimes) == 0 {
 		return true // No MIME types specified, consider it valid
 	}
 
 	fileType := file.Header.Get("Content-Type")
+	log.Printf("file type: %v", fileType)
 	for _, mime := range mimes {
 		if strings.TrimSpace(mime) == fileType {
 			return true // File type matches one of the allowed MIME types

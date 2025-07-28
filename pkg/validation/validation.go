@@ -3,6 +3,7 @@ package validation
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-playground/locales/en"
 	ut "github.com/go-playground/universal-translator"
@@ -67,7 +68,7 @@ func registerCustomRules() {
 		return ut.Add("file_max_size", "{0} exceeds the maximum allowed size", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
 
-		fieldName := fe.Field()
+		fieldName := parsingNestedInputFieldName(fe.Field())
 		return fmt.Sprintf("%s exceeds the maximum allowed size", fieldName)
 	})
 
@@ -76,7 +77,7 @@ func registerCustomRules() {
 		return ut.Add("file_min_size", "{0} is below the minimum required size", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
 
-		fieldName := fe.Field()
+		fieldName := parsingNestedInputFieldName(fe.Field())
 		return fmt.Sprintf("%s is below the minimum required size", fieldName)
 	})
 
@@ -85,7 +86,7 @@ func registerCustomRules() {
 		return ut.Add("file_mime_type", "{0} has an invalid file type", true)
 	}, func(ut ut.Translator, fe validator.FieldError) string {
 
-		fieldName := fe.Field()
+		fieldName := parsingNestedInputFieldName(fe.Field())
 		return fmt.Sprintf("%s has an invalid file type", fieldName)
 	})
 }
@@ -129,10 +130,18 @@ func mappingErrors(err error, translator ut.Translator) []errorInputMap {
 
 	for _, validationError := range errs {
 		validationErrors = append(validationErrors, map[string]string{
-			"field":   validationError.Field(),
+			"field":   parsingNestedInputFieldName(validationError.Field()),
 			"message": validationError.Translate(translator),
 		})
 	}
 
 	return validationErrors
+}
+
+func parsingNestedInputFieldName(field string) string {
+	field = strings.ToLower(field)
+	// replace `[` and `]` with `.` to handle nested fields
+	field = strings.ReplaceAll(field, "[", ".")
+	field = strings.ReplaceAll(field, "]", ".")
+	return field
 }
