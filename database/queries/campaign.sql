@@ -37,8 +37,8 @@ FROM campaigns
 WHERE id = $1 AND user_id = $2;
 
 -- name: CreateCampaign :one
-INSERT INTO campaigns (title, description, slug, user_id, target_amount, start_date, end_date, status, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+INSERT INTO campaigns (title, description, slug, user_id, target_amount, start_date, end_date, status, images, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
 RETURNING *;
 
 -- name: UpdateCampaign :one

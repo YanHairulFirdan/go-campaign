@@ -18,6 +18,7 @@ type CreateCampaignRequest struct {
 	StartDate    string
 	EndDate      string
 	Status       int
+	Images       []string // List of image file names
 }
 
 type Campaign struct {

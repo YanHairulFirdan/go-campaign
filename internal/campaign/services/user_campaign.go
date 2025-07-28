@@ -72,6 +72,7 @@ func (s *UserCampaignService) CreateCampaign(ctx context.Context, request Create
 		StartDate:    startDate,
 		EndDate:      endDate,
 		Status:       int32(request.Status),
+		Images:       request.Images,
 	})
 
 	if err != nil {

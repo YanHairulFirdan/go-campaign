@@ -30,6 +30,8 @@ CREATE TABLE IF NOT EXISTS campaigns (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL,
+    -- add images column
+    images TEXT [] DEFAULT '{}' NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

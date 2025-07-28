@@ -26,6 +26,7 @@ type Campaign struct {
 	CreatedAt     sql.NullTime `json:"created_at"`
 	UpdatedAt     sql.NullTime `json:"updated_at"`
 	DeletedAt     sql.NullTime `json:"deleted_at"`
+	Images        []string     `json:"images"`
 }
 
 type Donation struct {

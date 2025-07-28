@@ -1,7 +1,10 @@
 package v1
 
 import (
+	"fmt"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -77,6 +80,30 @@ func (h *handler) Create(c *fiber.Ctx) error {
 		)
 	}
 
+	uploaded, err := c.MultipartForm()
+
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Invalid multipart form data",
+				err.Error(),
+			),
+		)
+	}
+
+	if uploaded == nil || len(uploaded.File) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Missing image file",
+				"Image file is required",
+			),
+		)
+	}
+
+	req.Images = uploaded.File["images"]
+
 	validationErrors, err := validation.Validate(req, nil)
 
 	if err != nil {
@@ -90,13 +117,35 @@ func (h *handler) Create(c *fiber.Ctx) error {
 	}
 
 	if len(validationErrors) > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(
+		return c.Status(fiber.StatusUnprocessableEntity).JSON(
 			response.NewValidationErrorResponse(
 				"error",
 				"Validation failed",
 				validationErrors,
 			),
 		)
+	}
+
+	uploadDir := "./public/uploads"
+	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
+			return c.Status(fiber.StatusInternalServerError).JSON(
+				response.NewErrorResponse(
+					"error",
+					"Failed to create upload directory",
+					err.Error(),
+				),
+			)
+		}
+	}
+
+	images := make([]string, 0, len(req.Images))
+	// looping through all uploaded images and saving them
+	for _, fileHeader := range req.Images {
+		extension := strings.ToLower(fileHeader.Filename[strings.LastIndex(fileHeader.Filename, "."):])
+		fileHeader.Filename = fmt.Sprintf("%d%s", time.Now().UnixNano(), extension)
+		images = append(images, fileHeader.Filename)
+		c.SaveFile(fileHeader, fmt.Sprintf("./%s/%s", uploadDir, fileHeader.Filename))
 	}
 
 	campaign, err := h.s.CreateCampaign(c.Context(), services.CreateCampaignRequest{
@@ -108,6 +157,7 @@ func (h *handler) Create(c *fiber.Ctx) error {
 		StartDate:    req.StartDate,
 		EndDate:      req.EndDate,
 		Status:       int(req.Status),
+		Images:       images,
 	})
 
 	if err != nil {

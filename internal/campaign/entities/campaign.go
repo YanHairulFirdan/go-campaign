@@ -5,7 +5,7 @@ import "time"
 type Status int
 
 const (
-	StatusDraft Status = iota
+	StatusDraft Status = 1
 	StatusActive
 	StatusCompleted
 	StatusCancelled

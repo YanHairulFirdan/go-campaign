@@ -11,13 +11,14 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/sqlc-dev/pqtype"
 )
 
 const createCampaign = `-- name: CreateCampaign :one
-INSERT INTO campaigns (title, description, slug, user_id, target_amount, start_date, end_date, status, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-RETURNING id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status, created_at, updated_at, deleted_at
+INSERT INTO campaigns (title, description, slug, user_id, target_amount, start_date, end_date, status, images, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+RETURNING id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status, created_at, updated_at, deleted_at, images
 `
 
 type CreateCampaignParams struct {
@@ -29,6 +30,7 @@ type CreateCampaignParams struct {
 	StartDate    time.Time `json:"start_date"`
 	EndDate      time.Time `json:"end_date"`
 	Status       int32     `json:"status"`
+	Images       []string  `json:"images"`
 }
 
 func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) (Campaign, error) {
@@ -41,6 +43,7 @@ func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) 
 		arg.StartDate,
 		arg.EndDate,
 		arg.Status,
+		pq.Array(arg.Images),
 	)
 	var i Campaign
 	err := row.Scan(
@@ -57,6 +60,7 @@ func (q *Queries) CreateCampaign(ctx context.Context, arg CreateCampaignParams) 
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		pq.Array(&i.Images),
 	)
 	return i, err
 }
@@ -625,7 +629,7 @@ const softDeleteCampaign = `-- name: SoftDeleteCampaign :one
 UPDATE campaigns
 SET deleted_at = CURRENT_TIMESTAMP
 WHERE id = $1 AND user_id = $2
-RETURNING id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status, created_at, updated_at, deleted_at
+RETURNING id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status, created_at, updated_at, deleted_at, images
 `
 
 type SoftDeleteCampaignParams struct {
@@ -650,6 +654,7 @@ func (q *Queries) SoftDeleteCampaign(ctx context.Context, arg SoftDeleteCampaign
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		pq.Array(&i.Images),
 	)
 	return i, err
 }
