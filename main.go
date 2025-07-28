@@ -15,6 +15,7 @@ func main() {
 	app := fiber.New()
 	app.Use(logger.New())
 	app.Use(middleware.RateLimiter())
+	app.Static("/", "./public")
 
 	err := godotenv.Load(".env")
 
