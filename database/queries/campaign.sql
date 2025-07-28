@@ -1,5 +1,5 @@
 -- name: GetPaginatedUserCampaign :many
-SELECT id, title, 
+SELECT id, title, images,
 	   CASE 
 		   WHEN current_amount = 0 THEN 0 
 		   ELSE target_amount / current_amount 

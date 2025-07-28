@@ -433,7 +433,7 @@ func (q *Queries) GetPaginatedDonaturs(ctx context.Context, arg GetPaginatedDona
 }
 
 const getPaginatedUserCampaign = `-- name: GetPaginatedUserCampaign :many
-SELECT id, title, 
+SELECT id, title, images,
 	   CASE 
 		   WHEN current_amount = 0 THEN 0 
 		   ELSE target_amount / current_amount 
@@ -467,6 +467,7 @@ type GetPaginatedUserCampaignParams struct {
 type GetPaginatedUserCampaignRow struct {
 	ID          int32     `json:"id"`
 	Title       string    `json:"title"`
+	Images      []string  `json:"images"`
 	Progress    string    `json:"progress"`
 	StartDate   time.Time `json:"start_date"`
 	EndDate     time.Time `json:"end_date"`
@@ -492,6 +493,7 @@ func (q *Queries) GetPaginatedUserCampaign(ctx context.Context, arg GetPaginated
 		if err := rows.Scan(
 			&i.ID,
 			&i.Title,
+			pq.Array(&i.Images),
 			&i.Progress,
 			&i.StartDate,
 			&i.EndDate,
