@@ -1,10 +1,7 @@
 package v1
 
 import (
-	"fmt"
-	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -80,30 +77,6 @@ func (h *handler) Create(c *fiber.Ctx) error {
 		)
 	}
 
-	uploaded, err := c.MultipartForm()
-
-	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Invalid multipart form data",
-				err.Error(),
-			),
-		)
-	}
-
-	if uploaded == nil || len(uploaded.File) == 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Missing image file",
-				"Image file is required",
-			),
-		)
-	}
-
-	req.Images = uploaded.File["images"]
-
 	validationErrors, err := validation.Validate(req, nil)
 
 	if err != nil {
@@ -126,30 +99,6 @@ func (h *handler) Create(c *fiber.Ctx) error {
 		)
 	}
 
-	uploadDir := "./public/uploads"
-	if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(uploadDir, os.ModePerm); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(
-				response.NewErrorResponse(
-					"error",
-					"Failed to create upload directory",
-					err.Error(),
-				),
-			)
-		}
-	}
-
-	images := make([]string, 0, len(req.Images))
-	baseFileURL := os.Getenv("BASE_FILE_URL")
-
-	for _, fileHeader := range req.Images {
-		extension := strings.ToLower(fileHeader.Filename[strings.LastIndex(fileHeader.Filename, "."):])
-		fileHeader.Filename = fmt.Sprintf("%d%s", time.Now().UnixNano(), extension)
-
-		images = append(images, fmt.Sprintf("%s/uploads/%s", baseFileURL, fileHeader.Filename))
-		c.SaveFile(fileHeader, fmt.Sprintf("./%s/%s", uploadDir, fileHeader.Filename))
-	}
-
 	campaign, err := h.s.CreateCampaign(c.Context(), services.CreateCampaignRequest{
 		UserID:       int32(userID),
 		Title:        req.Title,
@@ -159,7 +108,7 @@ func (h *handler) Create(c *fiber.Ctx) error {
 		StartDate:    req.StartDate,
 		EndDate:      req.EndDate,
 		Status:       int(req.Status),
-		Images:       images,
+		Images:       req.Images,
 	})
 
 	if err != nil {
@@ -221,7 +170,19 @@ func (h *handler) Show(c *fiber.Ctx) error {
 		response.NewResponse(
 			"success",
 			"Campaign retrieved successfully",
-			campaign,
+			map[string]any{
+				"id":             campaign.ID,
+				"title":          campaign.Title,
+				"description":    campaign.Description,
+				"slug":           campaign.Slug,
+				"user_id":        campaign.UserID,
+				"target_amount":  campaign.TargetAmount,
+				"current_amount": campaign.CurrentAmount,
+				"start_date":     campaign.StartDate.Format("2006-01-02 15:04:05"),
+				"end_date":       campaign.EndDate.Format("2006-01-02 15:04:05"),
+				"status":         campaign.Status,
+				"images":         campaign.Images,
+			},
 		),
 	)
 }
@@ -299,6 +260,7 @@ func (h *handler) Update(c *fiber.Ctx) error {
 		EndDate:      req.EndDate,
 		Status:       int(req.Status),
 		UserID:       int32(userID),
+		Images:       req.Images,
 	})
 
 	if err != nil {

@@ -31,7 +31,7 @@ WHERE
 	status = sqlc.arg(status)::integer;
 
 -- name: GetUserCampaignById :one
-SELECT id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status,
+SELECT id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status, images,
 	   created_at::TIMESTAMP, updated_at::TIMESTAMP
 FROM campaigns
 WHERE id = $1 AND user_id = $2;
@@ -43,9 +43,9 @@ RETURNING *;
 
 -- name: UpdateCampaign :one
 UPDATE campaigns
-SET title = $1, description = $2, slug = $3, target_amount = $4, start_date = $5, end_date = $6, status = $7, updated_at = CURRENT_TIMESTAMP
-WHERE id = $8 AND user_id = $9
-RETURNING id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status, created_at::TIMESTAMP, updated_at::TIMESTAMP;
+SET title = $1, description = $2, slug = $3, target_amount = $4, start_date = $5, end_date = $6, status = $7, updated_at = CURRENT_TIMESTAMP, images = $9
+WHERE id = $8 AND user_id = $10
+RETURNING id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, images, status, created_at::TIMESTAMP, updated_at::TIMESTAMP;
 
 -- name: SoftDeleteCampaign :one
 UPDATE campaigns

@@ -116,6 +116,7 @@ func (s *UserCampaignService) UpdateCampaign(ctx context.Context, campaignID int
 		StartDate:    startDate,
 		EndDate:      endDate,
 		Status:       int32(request.Status),
+		Images:       request.Images,
 	})
 
 	if err != nil {

@@ -581,7 +581,7 @@ func (q *Queries) GetTotalUserCampaigns(ctx context.Context, arg GetTotalUserCam
 }
 
 const getUserCampaignById = `-- name: GetUserCampaignById :one
-SELECT id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status,
+SELECT id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status, images,
 	   created_at::TIMESTAMP, updated_at::TIMESTAMP
 FROM campaigns
 WHERE id = $1 AND user_id = $2
@@ -603,6 +603,7 @@ type GetUserCampaignByIdRow struct {
 	StartDate     time.Time `json:"start_date"`
 	EndDate       time.Time `json:"end_date"`
 	Status        int32     `json:"status"`
+	Images        []string  `json:"images"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
@@ -621,6 +622,7 @@ func (q *Queries) GetUserCampaignById(ctx context.Context, arg GetUserCampaignBy
 		&i.StartDate,
 		&i.EndDate,
 		&i.Status,
+		pq.Array(&i.Images),
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -663,9 +665,9 @@ func (q *Queries) SoftDeleteCampaign(ctx context.Context, arg SoftDeleteCampaign
 
 const updateCampaign = `-- name: UpdateCampaign :one
 UPDATE campaigns
-SET title = $1, description = $2, slug = $3, target_amount = $4, start_date = $5, end_date = $6, status = $7, updated_at = CURRENT_TIMESTAMP
-WHERE id = $8 AND user_id = $9
-RETURNING id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status, created_at::TIMESTAMP, updated_at::TIMESTAMP
+SET title = $1, description = $2, slug = $3, target_amount = $4, start_date = $5, end_date = $6, status = $7, updated_at = CURRENT_TIMESTAMP, images = $9
+WHERE id = $8 AND user_id = $10
+RETURNING id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, images, status, created_at::TIMESTAMP, updated_at::TIMESTAMP
 `
 
 type UpdateCampaignParams struct {
@@ -677,6 +679,7 @@ type UpdateCampaignParams struct {
 	EndDate      time.Time `json:"end_date"`
 	Status       int32     `json:"status"`
 	ID           int32     `json:"id"`
+	Images       []string  `json:"images"`
 	UserID       int32     `json:"user_id"`
 }
 
@@ -690,6 +693,7 @@ type UpdateCampaignRow struct {
 	CurrentAmount *float32  `json:"current_amount"`
 	StartDate     time.Time `json:"start_date"`
 	EndDate       time.Time `json:"end_date"`
+	Images        []string  `json:"images"`
 	Status        int32     `json:"status"`
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
@@ -705,6 +709,7 @@ func (q *Queries) UpdateCampaign(ctx context.Context, arg UpdateCampaignParams) 
 		arg.EndDate,
 		arg.Status,
 		arg.ID,
+		pq.Array(arg.Images),
 		arg.UserID,
 	)
 	var i UpdateCampaignRow
@@ -718,6 +723,7 @@ func (q *Queries) UpdateCampaign(ctx context.Context, arg UpdateCampaignParams) 
 		&i.CurrentAmount,
 		&i.StartDate,
 		&i.EndDate,
+		pq.Array(&i.Images),
 		&i.Status,
 		&i.CreatedAt,
 		&i.UpdatedAt,
