@@ -7,12 +7,15 @@ import (
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
-	"go-campaign.com/internal/infrastuctur"
+	"go-campaign.com/internal/infrastucture"
+	"go-campaign.com/internal/shared/http/middleware"
 )
 
 func main() {
 	app := fiber.New()
 	app.Use(logger.New())
+	app.Use(middleware.RateLimiter())
+	app.Static("/", "./public")
 
 	err := godotenv.Load(".env")
 
@@ -20,11 +23,14 @@ func main() {
 		panic("Error loading .env file")
 	}
 
-	db, err := infrastuctur.InitDatabaseConnection()
+	db, err := infrastucture.InitDatabaseConnection()
+	// queries := sqlc.New(db)
 
 	if err != nil {
 		panic("Error connecting to the database")
 	}
+
+	// txStore := repository.NewTransactionStore(db)
 
 	defer func() {
 		if err := db.Close(); err != nil {
@@ -32,8 +38,9 @@ func main() {
 		}
 	}()
 
-	infrastuctur.InitValidation(db)
-	infrastuctur.RegisterRoute(app, db)
+	infrastucture.InitValidation(db)
+	// infrastucture.RegisterRoute(app, queries, txStore, db)
+	infrastucture.RegisterRoute(app, db)
 
 	port := os.Getenv("APP_PORT")
 
