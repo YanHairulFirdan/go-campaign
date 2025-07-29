@@ -119,3 +119,16 @@ func (h *handler) Login(c *fiber.Ctx) error {
 		),
 	)
 }
+
+func (h *handler) Logout(c *fiber.Ctx) error {
+	// Clear the JWT token from the cookie
+	c.ClearCookie("jwt_token")
+
+	return c.Status(200).JSON(
+		response.NewResponse(
+			"success",
+			"User logged out successfully",
+			nil,
+		),
+	)
+}
