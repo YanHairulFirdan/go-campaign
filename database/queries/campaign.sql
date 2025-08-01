@@ -82,7 +82,7 @@ SELECT id, title, slug,
 FROM campaigns
 WHERE 
 	deleted_at IS NULL AND
-	status = 1 AND
+	status = 2 AND
 	start_date <= CURRENT_TIMESTAMP AND
 	end_date >= CURRENT_TIMESTAMP
 ORDER BY start_date DESC
