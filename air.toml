@@ -1,0 +1,18 @@
+# [1] How to run your app
+cmd = "./tmp/main"# .air.toml
+
+# [2] Watch config
+[watch]
+  dirs = ["."]
+  exclude_dir = ["vendor", "node_modules", "public"]
+  exclude_file = ["*.md", "*.log"]
+
+# [3] Build config
+[build]
+  cmd = "go build -o tmp/main ."
+  bin = "tmp/main"
+  full_bin = "APP_ENV=development ./tmp/main"   
+
+# [4] Logging
+[log]
+  time = true

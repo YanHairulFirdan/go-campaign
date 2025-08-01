@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  donasi-app:
+    build:
+      context: .
+      target: ${DOCKER_TARGET:-dev}
+    container_name: donasi-app
+    ports:
+      - "8089:8089"
+    env_file:
+      - .env
+    depends_on:
+      - postgres
+    environment:
+      - GO_ENV=${GO_ENV:-development}
+    command: >
+      sh -c "make migrate-up && air"
+    volumes:
+      - ./cmd:/app/cmd
+      - ./internal:/app/internal
+      - ./go.mod:/app/go.mod
+      - ./go.sum:/app/go.sum
+
+  postgres:
+    image: postgres:14
+    container_name: postgres
+    ports:
+      - "5435:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
