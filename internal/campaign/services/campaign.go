@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/google/uuid"
@@ -34,8 +33,6 @@ func (s *CampaignService) GetCampaigns(ctx context.Context, page, perPage int32)
 		Limit:  perPage,
 		Offset: (page - 1) * perPage,
 	})
-
-	log.Printf("GetCampaigns: page=%d, perPage=%d, total campaigns=%d", page, perPage, len(campaigns))
 
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to get campaigns: %w", err)
