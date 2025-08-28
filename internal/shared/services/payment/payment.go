@@ -1,6 +1,9 @@
 package payment
 
-import "github.com/google/uuid"
+import (
+	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
+)
 
 type UserDetail struct {
 	Email    string
@@ -22,8 +25,39 @@ type InvoiceRequest struct {
 	ProductDetails []ProductDetail
 }
 
+type PaymentStatus string
+
+const (
+	PaymentStatusPending      PaymentStatus = "PENDING"
+	PaymentStatusProcessing   PaymentStatus = "PROCESSING"
+	PaymentStatusSuccess      PaymentStatus = "SUCCESS"
+	PaymentStatusFailed       PaymentStatus = "FAILED"
+	PaymentStatusExpired      PaymentStatus = "EXPIRED"
+	DonationPaymentStatusPaid PaymentStatus = "PAID"
+)
+
+type PaymentCallback struct {
+	ExternalID    string
+	RawData       string
+	PaidAt        string
+	Status        PaymentStatus
+	PaymentMethod string
+}
+
+type PaymentStatusMap map[PaymentStatus]int32
+
+var MapPaymentStatus = map[PaymentStatus]int32{
+	PaymentStatusPending:      0,
+	PaymentStatusProcessing:   1,
+	PaymentStatusSuccess:      2,
+	PaymentStatusFailed:       3,
+	PaymentStatusExpired:      4,
+	DonationPaymentStatusPaid: 5,
+}
+
 type PaymentGateway interface {
 	CreateInvoice(request InvoiceRequest) (string, error) // Returns a payment URL or ID
+	ParseCallbackResponse(c *fiber.Ctx) (*PaymentCallback, error)
 }
 
 func New() PaymentGateway {

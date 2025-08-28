@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/sqlc-dev/pqtype"
 	"go-campaign.com/internal/campaign/repository/sqlc"
@@ -148,20 +149,22 @@ func (s *CampaignService) Donate(ctx context.Context, request DonationRequest) (
 	return url, nil
 }
 
-func (s *CampaignService) UpdatePaymentFromCallback(ctx context.Context, webhookEvent payment.XenditInvoiceWebhookResponse) error {
-	err := s.txStore.ExecTx(func() error {
+func (s *CampaignService) UpdatePaymentFromCallback(c *fiber.Ctx) error {
+	webhookEvent, err := s.p.ParseCallbackResponse(c)
+
+	if err != nil {
+		return fmt.Errorf("failed parsing response: %v", err)
+	}
+
+	ctx := c.Context()
+
+	err = s.txStore.ExecTx(func() error {
 		p, err := s.q.GetPaymentByTransactionId(ctx, uuid.MustParse(webhookEvent.ExternalID))
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
 				return fmt.Errorf("payment not found for transaction ID: %s", webhookEvent.ExternalID)
 			}
 			return fmt.Errorf("failed to get payment by transaction ID: %w", err)
-		}
-
-		rawResponse, err := webhookEvent.ToJson()
-
-		if err != nil {
-			return fmt.Errorf("failed to convert webhook event to JSON: %w", err)
 		}
 
 		updateParams := sqlc.UpdatePaymentFromCallbackParams{
@@ -176,7 +179,7 @@ func (s *CampaignService) UpdatePaymentFromCallback(ctx context.Context, webhook
 				Valid:  true,
 			},
 			Response: pqtype.NullRawMessage{
-				RawMessage: []byte(rawResponse),
+				RawMessage: []byte(webhookEvent.RawData),
 				Valid:      true,
 			},
 			PaymentDate: sql.NullTime{
@@ -190,13 +193,19 @@ func (s *CampaignService) UpdatePaymentFromCallback(ctx context.Context, webhook
 				Valid: webhookEvent.PaidAt != "",
 			}}
 
-		if webhookEvent.Status != payment.InvoiceStatusPaid {
-			updateParams.Status = int32(sqlc.DonationPaymentStatusExpired)
+		paymentStatus, exists := payment.MapPaymentStatus[webhookEvent.Status]
+
+		if !exists {
+			return fmt.Errorf("payment status is invalid: %v", webhookEvent.Status)
+		}
+
+		if webhookEvent.Status != payment.DonationPaymentStatusPaid {
+			updateParams.Status = paymentStatus
 
 			_, err = s.q.UpdatePaymentFromCallback(ctx, updateParams)
 
 			if err != nil {
-				return fmt.Errorf("failed to update payment status to expired: %w", err)
+				return fmt.Errorf("failed to update payment status to %v: %w", paymentStatus, err)
 			}
 		}
 

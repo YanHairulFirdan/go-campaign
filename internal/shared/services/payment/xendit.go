@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/gofiber/fiber/v2"
 	"github.com/xendit/xendit-go/v7"
 	"github.com/xendit/xendit-go/v7/common"
 	"github.com/xendit/xendit-go/v7/invoice"
@@ -109,4 +110,26 @@ func (x *xenditPaymentGateway) CreateInvoice(request InvoiceRequest) (string, er
 	}
 
 	return resp.InvoiceUrl, nil
+}
+
+func (x *xenditPaymentGateway) ParseCallbackResponse(c *fiber.Ctx) (*PaymentCallback, error) {
+	var webhookEvent XenditInvoiceWebhookResponse
+
+	if err := c.BodyParser(&webhookEvent); err != nil {
+		return nil, fmt.Errorf("failed to parse webhook body: %w", err)
+	}
+
+	rawData, err := webhookEvent.ToJson()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert webhook event to JSON: %w", err)
+	}
+
+	return &PaymentCallback{
+		ExternalID:    webhookEvent.ExternalID,
+		RawData:       rawData,
+		PaidAt:        webhookEvent.PaidAt,
+		Status:        PaymentStatus(webhookEvent.Status),
+		PaymentMethod: webhookEvent.PaymentMethod,
+	}, nil
 }

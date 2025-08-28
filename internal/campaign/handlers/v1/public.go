@@ -7,7 +7,6 @@ import (
 	"go-campaign.com/internal/campaign/entities"
 	"go-campaign.com/internal/campaign/services"
 	"go-campaign.com/internal/shared/http/response"
-	"go-campaign.com/internal/shared/services/payment"
 	"go-campaign.com/pkg/validation"
 )
 
@@ -208,19 +207,8 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 }
 
 func (h *publicHandler) XenditWebhookCallback(c *fiber.Ctx) error {
-	var webhookEvent payment.XenditInvoiceWebhookResponse
 
-	if err := c.BodyParser(&webhookEvent); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Invalid request body",
-				"Failed to parse request body",
-			),
-		)
-	}
-
-	if err := h.s.UpdatePaymentFromCallback(c.Context(), webhookEvent); err != nil {
+	if err := h.s.UpdatePaymentFromCallback(c); err != nil {
 		log.Printf("Error updating payment from callback: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			response.NewErrorResponse(
