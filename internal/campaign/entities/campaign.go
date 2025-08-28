@@ -5,10 +5,10 @@ import "time"
 type Status int
 
 const (
-	StatusDraft Status = 1
-	StatusActive
-	StatusCompleted
-	StatusCancelled
+	StatusDraft     Status = 1
+	StatusActive    Status = 2
+	StatusCompleted Status = 3
+	StatusCancelled Status = 4
 )
 
 type Campaign struct {
