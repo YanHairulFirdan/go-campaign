@@ -195,7 +195,7 @@ func (q *Queries) Donate(ctx context.Context, arg DonateParams) error {
 }
 
 const findCampaignByIdForUpdate = `-- name: FindCampaignByIdForUpdate :one
-SELECT id, user_id FROM campaigns
+SELECT id, user_id, status FROM campaigns
 WHERE id = $1 AND deleted_at IS NULL
 FOR UPDATE
 `
@@ -203,17 +203,18 @@ FOR UPDATE
 type FindCampaignByIdForUpdateRow struct {
 	ID     int32 `json:"id"`
 	UserID int32 `json:"user_id"`
+	Status int32 `json:"status"`
 }
 
 func (q *Queries) FindCampaignByIdForUpdate(ctx context.Context, id int32) (FindCampaignByIdForUpdateRow, error) {
 	row := q.db.QueryRowContext(ctx, findCampaignByIdForUpdate, id)
 	var i FindCampaignByIdForUpdateRow
-	err := row.Scan(&i.ID, &i.UserID)
+	err := row.Scan(&i.ID, &i.UserID, &i.Status)
 	return i, err
 }
 
 const findCampaignsBySlugForUpdate = `-- name: FindCampaignsBySlugForUpdate :one
-SELECT id, user_id FROM campaigns
+SELECT id, user_id, status FROM campaigns
 WHERE slug = $1 AND deleted_at IS NULL
 FOR UPDATE
 `
@@ -221,12 +222,13 @@ FOR UPDATE
 type FindCampaignsBySlugForUpdateRow struct {
 	ID     int32 `json:"id"`
 	UserID int32 `json:"user_id"`
+	Status int32 `json:"status"`
 }
 
 func (q *Queries) FindCampaignsBySlugForUpdate(ctx context.Context, slug string) (FindCampaignsBySlugForUpdateRow, error) {
 	row := q.db.QueryRowContext(ctx, findCampaignsBySlugForUpdate, slug)
 	var i FindCampaignsBySlugForUpdateRow
-	err := row.Scan(&i.ID, &i.UserID)
+	err := row.Scan(&i.ID, &i.UserID, &i.Status)
 	return i, err
 }
 

@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"github.com/gofiber/fiber/v2"
+	"go-campaign.com/internal/campaign/entities"
 	"go-campaign.com/internal/campaign/services"
 	"go-campaign.com/internal/shared/http/response"
 	"go-campaign.com/internal/shared/services/payment"
@@ -127,6 +128,16 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 				"error",
 				"Cannot donate to your own campaign",
 				"You cannot donate to your own campaign",
+			),
+		)
+	}
+
+	if campaign.Status != int32(entities.StatusActive) {
+		return c.Status(fiber.StatusBadRequest).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Campaign is not active",
+				"Cannot donate to a non-active campaign",
 			),
 		)
 	}

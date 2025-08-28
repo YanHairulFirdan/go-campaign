@@ -98,12 +98,12 @@ WHERE
 	end_date >= CURRENT_TIMESTAMP;
 
 -- name: FindCampaignsBySlugForUpdate :one
-SELECT id, user_id FROM campaigns
+SELECT id, user_id, status FROM campaigns
 WHERE slug = $1 AND deleted_at IS NULL
 FOR UPDATE;
 
 -- name: FindCampaignByIdForUpdate :one
-SELECT id, user_id FROM campaigns
+SELECT id, user_id, status FROM campaigns
 WHERE id = $1 AND deleted_at IS NULL
 FOR UPDATE;
 
