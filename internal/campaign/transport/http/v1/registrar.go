@@ -1,10 +1,9 @@
-package campaign
+package v1
 
 import (
 	"database/sql"
 
 	"github.com/gofiber/fiber/v2"
-	v1 "go-campaign.com/internal/campaign/handlers/v1"
 	"go-campaign.com/internal/campaign/repository/sqlc"
 	"go-campaign.com/internal/campaign/services"
 	"go-campaign.com/internal/shared/http/middleware"
@@ -18,8 +17,8 @@ func RegisterRouteV1(router fiber.Router, db *sql.DB) {
 	txStore := repository.NewTransactionStore(db)
 
 	userService := services.NewUserCampaignService(q)
-	userHandler := v1.NewHandler(userService)
-	publicHandler := v1.NewPublicHandler(services.NewCampaignService(q, txStore, payment.New()))
+	userHandler := NewHandler(userService)
+	publicHandler := NewPublicHandler(services.NewCampaignService(q, txStore, payment.New()))
 
 	routeGroup := router.Group("/user/campaigns", middleware.Protected(), middleware.ExtractToken)
 
@@ -35,5 +34,4 @@ func RegisterRouteV1(router fiber.Router, db *sql.DB) {
 	publicCampaign.Get("/:slug/donaturs", publicHandler.Donatur)
 
 	publicCampaign.Post("/xendit/callback", publicHandler.XenditWebhookCallback)
-	// routeGroup.Delete("/:id", userHandler.Delete)
 }
