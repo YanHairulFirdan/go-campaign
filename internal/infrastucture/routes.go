@@ -5,7 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v2"
 	campaignV1 "go-campaign.com/internal/campaign/transport/http/v1"
-	"go-campaign.com/internal/image"
+	imageV1 "go-campaign.com/internal/image/transport/http/v1"
 	userV1 "go-campaign.com/internal/user/transport/http/v1"
 )
 
@@ -14,5 +14,5 @@ func RegisterRoute(app *fiber.App, db *sql.DB) {
 
 	userV1.RegisterRouteV1(apiV1, db)
 	campaignV1.RegisterRouteV1(apiV1, db)
-	image.RegisterRouteV1(apiV1)
+	imageV1.RegisterRouteV1(apiV1)
 }

@@ -1,4 +1,4 @@
-package handlers
+package v1
 
 type UploadConfig struct {
 	minImageSize int64
