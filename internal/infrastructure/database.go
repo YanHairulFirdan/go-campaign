@@ -1,13 +1,14 @@
-package infrastucture
+package infrastructure
 
 import (
 	"database/sql"
 	"fmt"
-	"os"
+
+	"go-campaign.com/internal/config"
 )
 
-func InitDatabaseConnection() (*sql.DB, error) {
-	dbConnectionString := os.Getenv("DATABASE_CONNECTION")
+func InitDatabaseConnection(c *config.Config) (*sql.DB, error) {
+	dbConnectionString := c.Database.URL
 
 	db, err := sql.Open("postgres", dbConnectionString)
 
