@@ -77,25 +77,17 @@ func (h *handler) Create(c *fiber.Ctx) error {
 		)
 	}
 
-	validationErrors, err := validation.Validate(req, nil)
-
+	err := req.Validate()
+	validationErr, err := validation.ParseValidationErrors(err)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Internal server error",
-				err.Error(),
-			),
+		return c.Status(500).JSON(
+			response.NewErrorResponse("error", "Internal server error", err.Error()),
 		)
 	}
 
-	if len(validationErrors) > 0 {
-		return c.Status(fiber.StatusUnprocessableEntity).JSON(
-			response.NewValidationErrorResponse(
-				"error",
-				"Validation failed",
-				validationErrors,
-			),
+	if len(validationErr) > 0 {
+		return c.Status(422).JSON(
+			response.NewFailedValidationErrorResponse("error", "Validation failed", validationErr),
 		)
 	}
 
@@ -224,30 +216,17 @@ func (h *handler) Update(c *fiber.Ctx) error {
 		)
 	}
 
-	validationErrors, err := validation.Validate(req, validation.ValidationExceptions{
-		"Slug": {
-			Column: "id",
-			Value:  campaignID,
-		},
-	})
-
+	err = req.Validate()
+	validationErr, err := validation.ParseValidationErrors(err)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Internal server error",
-				err.Error(),
-			),
+		return c.Status(500).JSON(
+			response.NewErrorResponse("error", "Internal server error", err.Error()),
 		)
 	}
 
-	if len(validationErrors) > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewValidationErrorResponse(
-				"error",
-				"Validation failed",
-				validationErrors,
-			),
+	if len(validationErr) > 0 {
+		return c.Status(422).JSON(
+			response.NewFailedValidationErrorResponse("error", "Validation failed", validationErr),
 		)
 	}
 
