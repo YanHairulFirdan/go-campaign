@@ -27,3 +27,11 @@ func NewValidationErrorResponse(status, message string, errors []map[string]stri
 		Errors:  errors,
 	}
 }
+
+func NewFailedValidationErrorResponse(status, message string, errors map[string]string) *Response {
+	return &Response{
+		Status:  status,
+		Message: message,
+		Errors:  errors,
+	}
+}
