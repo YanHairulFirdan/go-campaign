@@ -27,17 +27,17 @@ func (h *handler) Register(c *fiber.Ctx) error {
 		)
 	}
 
-	validationErrors, err := validation.Validate(req, nil)
-
+	err := req.Validate()
+	validationErr, err := validation.ParseValidationErrors(err)
 	if err != nil {
 		return c.Status(500).JSON(
 			response.NewErrorResponse("error", "Internal server error", err.Error()),
 		)
 	}
 
-	if len(validationErrors) > 0 {
+	if len(validationErr) > 0 {
 		return c.Status(422).JSON(
-			response.NewValidationErrorResponse("error", "Validation failed", validationErrors),
+			response.NewFailedValidationErrorResponse("error", "Validation failed", validationErr),
 		)
 	}
 
@@ -79,17 +79,17 @@ func (h *handler) Login(c *fiber.Ctx) error {
 		)
 	}
 
-	validationErrors, err := validation.Validate(req, nil)
-
+	err := req.Validate()
+	validationErr, err := validation.ParseValidationErrors(err)
 	if err != nil {
 		return c.Status(500).JSON(
 			response.NewErrorResponse("error", "Internal server error", err.Error()),
 		)
 	}
 
-	if len(validationErrors) > 0 {
+	if len(validationErr) > 0 {
 		return c.Status(422).JSON(
-			response.NewValidationErrorResponse("error", "Validation failed", validationErrors),
+			response.NewFailedValidationErrorResponse("error", "Validation failed", validationErr),
 		)
 	}
 
@@ -97,7 +97,9 @@ func (h *handler) Login(c *fiber.Ctx) error {
 
 	if err != nil || userID == 0 {
 		return c.Status(401).JSON(
-			response.NewErrorResponse("error", "Invalid email or password", "Unauthorized"),
+			response.NewFailedValidationErrorResponse("error", "Invalid email or password", map[string]string{
+				"email": "Invalid email or password",
+			}),
 		)
 
 	}
