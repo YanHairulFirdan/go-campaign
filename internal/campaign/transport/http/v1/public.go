@@ -153,25 +153,17 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 		)
 	}
 
-	errMessages, err := validation.Validate(donationRequest, nil)
-
+	err = donationRequest.Validate()
+	validationErr, err := validation.ParseValidationErrors(err)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewErrorResponse(
-				"error",
-				"Validation error",
-				err.Error(),
-			),
+		return c.Status(500).JSON(
+			response.NewErrorResponse("error", "Internal server error", err.Error()),
 		)
 	}
 
-	if len(errMessages) > 0 {
-		return c.Status(fiber.StatusBadRequest).JSON(
-			response.NewValidationErrorResponse(
-				"error",
-				"Validation error",
-				errMessages,
-			),
+	if len(validationErr) > 0 {
+		return c.Status(422).JSON(
+			response.NewFailedValidationErrorResponse("error", "Validation failed", validationErr),
 		)
 	}
 

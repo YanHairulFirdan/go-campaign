@@ -1,5 +1,10 @@
 package v1
 
+import (
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+	"github.com/go-ozzo/ozzo-validation/v4/is"
+)
+
 type ListCampaign struct {
 	ID            int     `json:"id"`
 	Title         string  `json:"title"`
@@ -17,4 +22,13 @@ type DonationRequest struct {
 	Email  string  `json:"email" validate:"required,email"`
 	Amount float32 `json:"amount" validate:"required,min=1"`
 	Note   string  `json:"note" validate:"omitempty,max=500"`
+}
+
+func (r *DonationRequest) Validate() error {
+	return validation.ValidateStruct(r,
+		validation.Field(&r.Name, validation.Required, validation.Length(3, 100)),
+		validation.Field(&r.Email, validation.Required, validation.Length(5, 100), is.Email),
+		validation.Field(&r.Amount, validation.Required, validation.Min(1.0)),
+		validation.Field(&r.Note, validation.Length(0, 500)),
+	)
 }
