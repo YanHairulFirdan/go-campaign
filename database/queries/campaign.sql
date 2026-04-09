@@ -171,3 +171,6 @@ WHERE donaturs.campaign_id IN (
 		SELECT 1 FROM payments
 		WHERE status = 5 AND donatur_id = donaturs.id
 	);
+-- name: UpdateCampaignStatus :one
+UPDATE campaigns SET status = $1 where id = $2
+RETURNING id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, images, status, created_at::TIMESTAMP, updated_at::TIMESTAMP;

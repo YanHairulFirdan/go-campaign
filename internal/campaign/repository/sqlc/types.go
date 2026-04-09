@@ -42,4 +42,5 @@ const (
 	DonationPaymentStatusFailed
 	DonationPaymentStatusExpired
 	DonationPaymentStatusPaid
+	DonationPaymentStatusRetry
 )
