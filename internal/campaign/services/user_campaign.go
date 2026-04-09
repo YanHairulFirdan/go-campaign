@@ -25,7 +25,7 @@ func (s *UserCampaignService) GetPaginatedUserCampaigns(ctx context.Context, req
 		sqlc.GetPaginatedUserCampaignParams{
 			UserID: request.UserID,
 			Limit:  request.Limit,
-			Offset: (request.UserID - 1) * request.Limit,
+			Offset: (request.Page - 1) * request.Limit,
 			Title:  request.Title,
 			Status: request.Status,
 		},
