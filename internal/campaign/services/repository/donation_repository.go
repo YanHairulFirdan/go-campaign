@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/shopspring/decimal"
-	"go-campaign.com/internal/shared/http/request"
 )
 
 type DonationRepository interface {
@@ -46,9 +45,9 @@ type UpdatePayment struct {
 }
 
 type GetPaginatedDonaturParams struct {
-	request.PaginationRequest
-
-	Slug string
+	Limit  int32
+	Offset int32
+	Slug   string
 }
 
 type DonaturList struct {

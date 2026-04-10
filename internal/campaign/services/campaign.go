@@ -120,11 +120,9 @@ func (s *CampaignService) UpdatePaymentFromCallback(ctx context.Context, webhook
 
 func (s *CampaignService) GetDonatur(ctx context.Context, req GetDonaturListRequest) ([]repository.DonaturList, int, error) {
 	donaturs, err := s.donationRepository.GetPaginatedDonatur(ctx, repository.GetPaginatedDonaturParams{
-		PaginationRequest: request.PaginationRequest{
-			Page:  req.Offset,
-			Limit: req.Limit,
-		},
-		Slug: req.Slug,
+		Offset: req.Offset,
+		Limit:  req.Limit,
+		Slug:   req.Slug,
 	})
 
 	if err != nil {

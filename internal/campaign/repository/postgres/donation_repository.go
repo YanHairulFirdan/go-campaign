@@ -222,7 +222,7 @@ func (r *DonationRepository) GetPaginatedDonatur(ctx context.Context, req reposi
 	donaturs, err := r.sqlc.GetPaginatedDonaturs(ctx, sqlc.GetPaginatedDonatursParams{
 		Slug:   req.Slug,
 		Limit:  req.Limit,
-		Offset: req.Page,
+		Offset: req.Offset,
 	})
 
 	if err != nil {
