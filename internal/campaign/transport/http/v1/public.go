@@ -1,17 +1,23 @@
 package v1
 
 import (
+	"fmt"
 	"log"
+	"slices"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/shopspring/decimal"
 	"go-campaign.com/internal/campaign/entities"
 	"go-campaign.com/internal/campaign/services"
+	"go-campaign.com/internal/config"
 	"go-campaign.com/internal/shared/http/response"
+	"go-campaign.com/internal/shared/services/payment"
 	"go-campaign.com/pkg/validation"
 )
 
 type publicHandler struct {
-	s *services.CampaignService
+	s      *services.CampaignService
+	config config.Config
 }
 
 func NewPublicHandler(
@@ -109,7 +115,7 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 		)
 	}
 
-	campaign, err := h.s.FindCampaignsBySlugForUpdate(c.Context(), slug)
+	campaign, err := h.s.GetCampaignBySlug(c.Context(), slug)
 
 	if err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(
@@ -170,7 +176,7 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 	url, err := h.s.Donate(c.Context(), services.DonationRequest{
 		CampaignID: campaign.ID,
 		UserID:     int32(userID),
-		Amount:     donationRequest.Amount,
+		Amount:     decimal.NewFromFloat32(donationRequest.Amount),
 		Name:       donationRequest.Name,
 		Email:      donationRequest.Email,
 		Note:       &donationRequest.Note,
@@ -199,8 +205,19 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 }
 
 func (h *publicHandler) XenditWebhookCallback(c *fiber.Ctx) error {
+	webhookEvent, err := parseWebhookResponse(c, h.config.App.Service.Payment.Vendor)
 
-	if err := h.s.UpdatePaymentFromCallback(c); err != nil {
+	if err != nil {
+		return fmt.Errorf("failed parsing response: %w", err)
+	}
+
+	_, exists := payment.MapPaymentStatus[webhookEvent.Status]
+
+	if !exists {
+		return fmt.Errorf("payment status is invalid: %v", webhookEvent.Status)
+	}
+
+	if err := h.s.UpdatePaymentFromCallback(c.Context(), webhookEvent); err != nil {
 		log.Printf("Error updating payment from callback: %v", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			response.NewErrorResponse(
@@ -270,4 +287,31 @@ func (h *publicHandler) Donatur(c *fiber.Ctx) error {
 			),
 		),
 	)
+}
+
+func parseWebhookResponse(c *fiber.Ctx, vendor string) (*payment.PaymentCallback, error) {
+	availablePaymentVendor := []string{"xendit"}
+
+	if !slices.Contains(availablePaymentVendor, vendor) {
+		return nil, fmt.Errorf("currently we do not support payment from requested vendor: %s", vendor)
+	}
+	var webhookEvent payment.XenditInvoiceWebhookResponse
+
+	if err := c.BodyParser(&webhookEvent); err != nil {
+		return nil, fmt.Errorf("failed to parse webhook body: %w", err)
+	}
+
+	rawData, err := webhookEvent.ToJson()
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert webhook event to JSON: %w", err)
+	}
+
+	return &payment.PaymentCallback{
+		ExternalID:    webhookEvent.ExternalID,
+		RawData:       rawData,
+		PaidAt:        webhookEvent.PaidAt,
+		Status:        payment.PaymentStatus(webhookEvent.Status),
+		PaymentMethod: webhookEvent.PaymentMethod,
+	}, nil
 }

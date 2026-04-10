@@ -13,9 +13,19 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Port string
-	URL  string
-	ENV  string
+	Port    string
+	URL     string
+	ENV     string
+	Service ServiceConfig
+}
+
+type ServiceConfig struct {
+	Payment PaymentConfig
+}
+
+type PaymentConfig struct {
+	Vendor    string
+	SecretKey string
 }
 
 type DatabaseConfig struct {
@@ -33,6 +43,12 @@ func Load() (*Config, error) {
 			Port: getEnv("APP_PORT", "3030"),
 			URL:  getEnv("APP_URL", "http://localhost:3030"),
 			ENV:  getEnv("APP_ENV", "development"),
+			Service: ServiceConfig{
+				Payment: PaymentConfig{
+					Vendor:    getEnv("PAYMENT_VENDOR", "xendit"),
+					SecretKey: getEnv("PAYMENT_SECRET_KEY", ""),
+				},
+			},
 		},
 		Database: DatabaseConfig{
 			URL:  getEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/dbname"),
