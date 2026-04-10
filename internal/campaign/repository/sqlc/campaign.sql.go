@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
+	"github.com/shopspring/decimal"
 	"github.com/sqlc-dev/pqtype"
 )
 
@@ -71,10 +72,10 @@ VALUES ($1, $2, $3, $4) RETURNING id, donatur_id, campaign_id, amount, note, cre
 `
 
 type CreateDonationParams struct {
-	DonaturID  int32          `json:"donatur_id"`
-	CampaignID int32          `json:"campaign_id"`
-	Amount     string         `json:"amount"`
-	Note       sql.NullString `json:"note"`
+	DonaturID  int32           `json:"donatur_id"`
+	CampaignID int32           `json:"campaign_id"`
+	Amount     decimal.Decimal `json:"amount"`
+	Note       sql.NullString  `json:"note"`
 }
 
 func (q *Queries) CreateDonation(ctx context.Context, arg CreateDonationParams) (Donation, error) {
@@ -136,14 +137,14 @@ RETURNING id, transaction_id, donatur_id, donation_id, campaign_id, vendor, meth
 `
 
 type CreatePaymentParams struct {
-	TransactionID uuid.UUID      `json:"transaction_id"`
-	DonaturID     int32          `json:"donatur_id"`
-	DonationID    int32          `json:"donation_id"`
-	CampaignID    int32          `json:"campaign_id"`
-	Amount        string         `json:"amount"`
-	Link          sql.NullString `json:"link"`
-	Note          sql.NullString `json:"note"`
-	Status        int32          `json:"status"`
+	TransactionID uuid.UUID       `json:"transaction_id"`
+	DonaturID     int32           `json:"donatur_id"`
+	DonationID    int32           `json:"donation_id"`
+	CampaignID    int32           `json:"campaign_id"`
+	Amount        decimal.Decimal `json:"amount"`
+	Link          sql.NullString  `json:"link"`
+	Note          sql.NullString  `json:"note"`
+	Status        int32           `json:"status"`
 }
 
 func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (Payment, error) {
@@ -178,20 +179,50 @@ func (q *Queries) CreatePayment(ctx context.Context, arg CreatePaymentParams) (P
 	return i, err
 }
 
-const donate = `-- name: Donate :exec
-UPDATE campaigns
-SET current_amount = current_amount + $2::numeric	
-WHERE id = $1 AND deleted_at IS NULL
+const findAndLockDonationForUpdate = `-- name: FindAndLockDonationForUpdate :one
+SELECT id, donatur_id, campaign_id, amount, note, created_at, updated_at FROM donations WHERE id = $1 FOR UPDATE
 `
 
-type DonateParams struct {
-	ID     int32  `json:"id"`
-	Amount string `json:"amount"`
+func (q *Queries) FindAndLockDonationForUpdate(ctx context.Context, id int32) (Donation, error) {
+	row := q.db.QueryRowContext(ctx, findAndLockDonationForUpdate, id)
+	var i Donation
+	err := row.Scan(
+		&i.ID,
+		&i.DonaturID,
+		&i.CampaignID,
+		&i.Amount,
+		&i.Note,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
-func (q *Queries) Donate(ctx context.Context, arg DonateParams) error {
-	_, err := q.db.ExecContext(ctx, donate, arg.ID, arg.Amount)
-	return err
+const findAndLockPaymentForUpdate = `-- name: FindAndLockPaymentForUpdate :one
+SELECT id, transaction_id, donatur_id, donation_id, campaign_id, vendor, method, amount, link, note, status, response, payment_date, created_at, updated_at FROM payments WHERE transaction_id = $1 FOR UPDATE
+`
+
+func (q *Queries) FindAndLockPaymentForUpdate(ctx context.Context, transactionID uuid.UUID) (Payment, error) {
+	row := q.db.QueryRowContext(ctx, findAndLockPaymentForUpdate, transactionID)
+	var i Payment
+	err := row.Scan(
+		&i.ID,
+		&i.TransactionID,
+		&i.DonaturID,
+		&i.DonationID,
+		&i.CampaignID,
+		&i.Vendor,
+		&i.Method,
+		&i.Amount,
+		&i.Link,
+		&i.Note,
+		&i.Status,
+		&i.Response,
+		&i.PaymentDate,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const findCampaignByIdForUpdate = `-- name: FindCampaignByIdForUpdate :one
@@ -233,29 +264,39 @@ func (q *Queries) FindCampaignsBySlugForUpdate(ctx context.Context, slug string)
 }
 
 const getCampaignBySlug = `-- name: GetCampaignBySlug :one
-SELECT campaigns.id, campaigns.title, campaigns.description, campaigns.slug, campaigns.target_amount, campaigns.current_amount, campaigns.start_date, campaigns.end_date,
+SELECT 
+campaigns.id, 
+campaigns.title, 
+campaigns.description, 
+campaigns.slug, 
+campaigns.target_amount::numeric as target_amount, 
+campaigns.current_amount::numeric as current_amount, 
+campaigns.start_date, 
+campaigns.end_date,
+campaigns.status,
 	users.name as user_name, users.email as user_email,
 	CASE 
 		WHEN campaigns.current_amount = 0 THEN 0 
 		ELSE campaigns.target_amount / campaigns.current_amount 
-	END::DECIMAL(10, 2) AS progress
+	END::numeric AS progress
 FROM campaigns
 JOIN users ON campaigns.user_id = users.id
 WHERE campaigns.slug = $1
 `
 
 type GetCampaignBySlugRow struct {
-	ID            int32     `json:"id"`
-	Title         string    `json:"title"`
-	Description   *string   `json:"description"`
-	Slug          string    `json:"slug"`
-	TargetAmount  *float32  `json:"target_amount"`
-	CurrentAmount *float32  `json:"current_amount"`
-	StartDate     time.Time `json:"start_date"`
-	EndDate       time.Time `json:"end_date"`
-	UserName      string    `json:"user_name"`
-	UserEmail     string    `json:"user_email"`
-	Progress      string    `json:"progress"`
+	ID            int32           `json:"id"`
+	Title         string          `json:"title"`
+	Description   *string         `json:"description"`
+	Slug          string          `json:"slug"`
+	TargetAmount  decimal.Decimal `json:"target_amount"`
+	CurrentAmount decimal.Decimal `json:"current_amount"`
+	StartDate     time.Time       `json:"start_date"`
+	EndDate       time.Time       `json:"end_date"`
+	Status        int32           `json:"status"`
+	UserName      string          `json:"user_name"`
+	UserEmail     string          `json:"user_email"`
+	Progress      decimal.Decimal `json:"progress"`
 }
 
 func (q *Queries) GetCampaignBySlug(ctx context.Context, slug string) (GetCampaignBySlugRow, error) {
@@ -270,6 +311,7 @@ func (q *Queries) GetCampaignBySlug(ctx context.Context, slug string) (GetCampai
 		&i.CurrentAmount,
 		&i.StartDate,
 		&i.EndDate,
+		&i.Status,
 		&i.UserName,
 		&i.UserEmail,
 		&i.Progress,
@@ -297,11 +339,11 @@ func (q *Queries) GetCampaignTotalPaidDonaturs(ctx context.Context, slug string)
 
 const getCampaigns = `-- name: GetCampaigns :many
 SELECT id, title, slug,
-		current_amount, target_amount,
+		current_amount::numeric, target_amount::numeric,
 	   CASE 
 		   WHEN current_amount = 0 THEN 0 
 		   ELSE target_amount / current_amount 
-	   END::DECIMAL(10, 2) AS progress, 
+	   END::numeric AS progress, 
 	   start_date, end_date,
 	   CASE
 	   	   	WHEN status = 1 THEN 'Draft'
@@ -326,15 +368,15 @@ type GetCampaignsParams struct {
 }
 
 type GetCampaignsRow struct {
-	ID            int32     `json:"id"`
-	Title         string    `json:"title"`
-	Slug          string    `json:"slug"`
-	CurrentAmount *float32  `json:"current_amount"`
-	TargetAmount  *float32  `json:"target_amount"`
-	Progress      string    `json:"progress"`
-	StartDate     time.Time `json:"start_date"`
-	EndDate       time.Time `json:"end_date"`
-	Status        string    `json:"status"`
+	ID            int32           `json:"id"`
+	Title         string          `json:"title"`
+	Slug          string          `json:"slug"`
+	CurrentAmount decimal.Decimal `json:"current_amount"`
+	TargetAmount  decimal.Decimal `json:"target_amount"`
+	Progress      decimal.Decimal `json:"progress"`
+	StartDate     time.Time       `json:"start_date"`
+	EndDate       time.Time       `json:"end_date"`
+	Status        string          `json:"status"`
 }
 
 func (q *Queries) GetCampaigns(ctx context.Context, arg GetCampaignsParams) ([]GetCampaignsRow, error) {
@@ -375,7 +417,7 @@ SELECT
 	d.id, 
 	d.name, 
 	COALESCE(d.email, '') AS email,
-	p.amount::real AS total_donated
+	p.amount::numeric AS total_donated
 FROM donaturs d
 JOIN (
 	SELECT donatur_id, SUM(amount) AS amount
@@ -400,10 +442,10 @@ type GetPaginatedDonatursParams struct {
 }
 
 type GetPaginatedDonatursRow struct {
-	ID           int32   `json:"id"`
-	Name         string  `json:"name"`
-	Email        string  `json:"email"`
-	TotalDonated float32 `json:"total_donated"`
+	ID           int32           `json:"id"`
+	Name         string          `json:"name"`
+	Email        string          `json:"email"`
+	TotalDonated decimal.Decimal `json:"total_donated"`
 }
 
 func (q *Queries) GetPaginatedDonaturs(ctx context.Context, arg GetPaginatedDonatursParams) ([]GetPaginatedDonatursRow, error) {
@@ -467,14 +509,14 @@ type GetPaginatedUserCampaignParams struct {
 }
 
 type GetPaginatedUserCampaignRow struct {
-	ID          int32     `json:"id"`
-	Title       string    `json:"title"`
-	Images      []string  `json:"images"`
-	Progress    string    `json:"progress"`
-	StartDate   time.Time `json:"start_date"`
-	EndDate     time.Time `json:"end_date"`
-	Status      int32     `json:"status"`
-	StatusLabel string    `json:"status_label"`
+	ID          int32           `json:"id"`
+	Title       string          `json:"title"`
+	Images      []string        `json:"images"`
+	Progress    decimal.Decimal `json:"progress"`
+	StartDate   time.Time       `json:"start_date"`
+	EndDate     time.Time       `json:"end_date"`
+	Status      int32           `json:"status"`
+	StatusLabel string          `json:"status_label"`
 }
 
 func (q *Queries) GetPaginatedUserCampaign(ctx context.Context, arg GetPaginatedUserCampaignParams) ([]GetPaginatedUserCampaignRow, error) {
@@ -631,6 +673,44 @@ func (q *Queries) GetUserCampaignById(ctx context.Context, arg GetUserCampaignBy
 	return i, err
 }
 
+const increaseCampaignCurrentAmount = `-- name: IncreaseCampaignCurrentAmount :exec
+UPDATE campaigns
+SET current_amount = current_amount + $2::numeric	
+WHERE id = $1 AND deleted_at IS NULL
+`
+
+type IncreaseCampaignCurrentAmountParams struct {
+	ID     int32           `json:"id"`
+	Amount decimal.Decimal `json:"amount"`
+}
+
+func (q *Queries) IncreaseCampaignCurrentAmount(ctx context.Context, arg IncreaseCampaignCurrentAmountParams) error {
+	_, err := q.db.ExecContext(ctx, increaseCampaignCurrentAmount, arg.ID, arg.Amount)
+	return err
+}
+
+const markPaymentInvoiceCreated = `-- name: MarkPaymentInvoiceCreated :exec
+UPDATE payments SET link = $1, vendor = $2, status = $3
+WHERE id = $4
+`
+
+type MarkPaymentInvoiceCreatedParams struct {
+	Link   sql.NullString `json:"link"`
+	Vendor sql.NullString `json:"vendor"`
+	Status int32          `json:"status"`
+	ID     int32          `json:"id"`
+}
+
+func (q *Queries) MarkPaymentInvoiceCreated(ctx context.Context, arg MarkPaymentInvoiceCreatedParams) error {
+	_, err := q.db.ExecContext(ctx, markPaymentInvoiceCreated,
+		arg.Link,
+		arg.Vendor,
+		arg.Status,
+		arg.ID,
+	)
+	return err
+}
+
 const softDeleteCampaign = `-- name: SoftDeleteCampaign :one
 UPDATE campaigns
 SET deleted_at = CURRENT_TIMESTAMP
@@ -780,7 +860,7 @@ func (q *Queries) UpdateCampaignStatus(ctx context.Context, arg UpdateCampaignSt
 	return i, err
 }
 
-const updatePaymentFromCallback = `-- name: UpdatePaymentFromCallback :one
+const updatePaymentFromWebhookCallback = `-- name: UpdatePaymentFromWebhookCallback :one
 UPDATE payments
 SET 
     status = $2, 
@@ -793,7 +873,7 @@ WHERE id = $1
 RETURNING id, transaction_id, donatur_id, donation_id, campaign_id, vendor, method, amount, link, note, status, response, payment_date, created_at, updated_at
 `
 
-type UpdatePaymentFromCallbackParams struct {
+type UpdatePaymentFromWebhookCallbackParams struct {
 	ID          int32                 `json:"id"`
 	Status      int32                 `json:"status"`
 	Vendor      sql.NullString        `json:"vendor"`
@@ -802,8 +882,8 @@ type UpdatePaymentFromCallbackParams struct {
 	PaymentDate sql.NullTime          `json:"payment_date"`
 }
 
-func (q *Queries) UpdatePaymentFromCallback(ctx context.Context, arg UpdatePaymentFromCallbackParams) (Payment, error) {
-	row := q.db.QueryRowContext(ctx, updatePaymentFromCallback,
+func (q *Queries) UpdatePaymentFromWebhookCallback(ctx context.Context, arg UpdatePaymentFromWebhookCallbackParams) (Payment, error) {
+	row := q.db.QueryRowContext(ctx, updatePaymentFromWebhookCallback,
 		arg.ID,
 		arg.Status,
 		arg.Vendor,
@@ -830,4 +910,19 @@ func (q *Queries) UpdatePaymentFromCallback(ctx context.Context, arg UpdatePayme
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updatePaymentStatus = `-- name: UpdatePaymentStatus :exec
+UPDATE payments SET status = $1
+WHERE id = $2
+`
+
+type UpdatePaymentStatusParams struct {
+	Status int32 `json:"status"`
+	ID     int32 `json:"id"`
+}
+
+func (q *Queries) UpdatePaymentStatus(ctx context.Context, arg UpdatePaymentStatusParams) error {
+	_, err := q.db.ExecContext(ctx, updatePaymentStatus, arg.Status, arg.ID)
+	return err
 }

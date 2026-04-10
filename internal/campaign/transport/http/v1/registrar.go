@@ -4,21 +4,22 @@ import (
 	"database/sql"
 
 	"github.com/gofiber/fiber/v2"
+	"go-campaign.com/internal/campaign/repository/postgres"
 	"go-campaign.com/internal/campaign/repository/sqlc"
 	"go-campaign.com/internal/campaign/services"
 	"go-campaign.com/internal/shared/http/middleware"
-	"go-campaign.com/internal/shared/repository"
 	"go-campaign.com/internal/shared/services/payment"
 )
 
 func RegisterRouteV1(router fiber.Router, db *sql.DB) {
 
 	q := sqlc.New(db) // Now using the shared repository package
-	txStore := repository.NewTransactionStore(db)
+	donationRepository := postgres.NewDonationRepository(db, q)
+	campaignRepository := postgres.NewCampaignRepository(q)
 
 	userService := services.NewUserCampaignService(q)
 	userHandler := NewHandler(userService)
-	publicHandler := NewPublicHandler(services.NewCampaignService(q, txStore, payment.New()))
+	publicHandler := NewPublicHandler(services.NewCampaignService(payment.New(), donationRepository, campaignRepository))
 
 	routeGroup := router.Group("/user/campaigns", middleware.Protected(), middleware.ExtractToken)
 

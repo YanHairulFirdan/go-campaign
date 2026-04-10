@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 	"github.com/sqlc-dev/pqtype"
 )
 
@@ -30,13 +31,13 @@ type Campaign struct {
 }
 
 type Donation struct {
-	ID         int32          `json:"id"`
-	DonaturID  int32          `json:"donatur_id"`
-	CampaignID int32          `json:"campaign_id"`
-	Amount     string         `json:"amount"`
-	Note       sql.NullString `json:"note"`
-	CreatedAt  sql.NullTime   `json:"created_at"`
-	UpdatedAt  sql.NullTime   `json:"updated_at"`
+	ID         int32           `json:"id"`
+	DonaturID  int32           `json:"donatur_id"`
+	CampaignID int32           `json:"campaign_id"`
+	Amount     decimal.Decimal `json:"amount"`
+	Note       sql.NullString  `json:"note"`
+	CreatedAt  sql.NullTime    `json:"created_at"`
+	UpdatedAt  sql.NullTime    `json:"updated_at"`
 }
 
 type Donatur struct {
@@ -57,7 +58,7 @@ type Payment struct {
 	CampaignID    int32                 `json:"campaign_id"`
 	Vendor        sql.NullString        `json:"vendor"`
 	Method        sql.NullString        `json:"method"`
-	Amount        string                `json:"amount"`
+	Amount        decimal.Decimal       `json:"amount"`
 	Link          sql.NullString        `json:"link"`
 	Note          sql.NullString        `json:"note"`
 	Status        int32                 `json:"status"`
