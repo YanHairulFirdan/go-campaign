@@ -1,7 +1,6 @@
 package payment
 
 import (
-	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
@@ -57,7 +56,6 @@ var MapPaymentStatus = map[PaymentStatus]int32{
 
 type PaymentGateway interface {
 	CreateInvoice(request InvoiceRequest) (string, error) // Returns a payment URL or ID
-	ParseCallbackResponse(c *fiber.Ctx) (*PaymentCallback, error)
 }
 
 func New() PaymentGateway {
