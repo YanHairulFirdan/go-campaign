@@ -1,6 +1,10 @@
 package services
 
-import "time"
+import (
+	"time"
+
+	"github.com/shopspring/decimal"
+)
 
 type PaginatedCampaignRequest struct {
 	UserID int32
@@ -37,7 +41,7 @@ type Campaign struct {
 type DonationRequest struct {
 	CampaignID int32
 	UserID     int32
-	Amount     float32
+	Amount     decimal.Decimal
 	Name       string
 	Email      string
 	Note       *string
