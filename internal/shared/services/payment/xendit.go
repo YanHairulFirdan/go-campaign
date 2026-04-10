@@ -17,13 +17,6 @@ type xenditPaymentGateway struct {
 	client *xendit.APIClient // Xendit client for API interactions
 }
 
-type InvoiceStatus string
-
-const (
-	InvoiceStatusPaid    InvoiceStatus = "PAID"
-	InvoiceStatusExpired InvoiceStatus = "EXPIRED"
-)
-
 type XenditInvoiceItem struct {
 	Name     string  `json:"name"`
 	Quantity float32 `json:"quantity"`
