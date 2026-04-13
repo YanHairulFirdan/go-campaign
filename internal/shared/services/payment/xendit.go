@@ -56,10 +56,10 @@ func (r *XenditInvoiceWebhookResponse) ToJson() (string, error) {
 }
 
 func NewXendit() *xenditPaymentGateway {
-	secretKey := os.Getenv("XENDIT_SECRET_KEY")
+	secretKey := os.Getenv("PAYMENT_SECRET_KEY")
 
 	if secretKey == "" {
-		panic("XENDIT_SECRET_KEY environment variable is not set")
+		panic("PAYMENT_SECRET_KEY environment variable is not set")
 	}
 
 	return &xenditPaymentGateway{
