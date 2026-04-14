@@ -13,7 +13,7 @@ func TestCreateXenditTransaction(t *testing.T) {
 	err := godotenv.Load("../../../../.env")
 
 	if err != nil {
-		t.Fatalf("Error loading .env file: %v", err)
+		t.Fatalf("Error loading .env file: %w", err)
 	}
 
 	x, _ := NewXendit(os.Getenv("PAYMENT_SECRET_KEY"))
@@ -42,7 +42,7 @@ func TestCreateXenditTransaction(t *testing.T) {
 	res, err := x.CreateInvoice(request)
 
 	if err != nil {
-		t.Errorf("Failed to create Xendit transaction: %v", err)
+		t.Errorf("Failed to create Xendit transaction: %w", err)
 		return
 	}
 

@@ -104,7 +104,7 @@ func (s *CampaignService) UpdatePaymentFromCallback(ctx context.Context, webhook
 	status, exists := payment.MapPaymentStatus[webhookEvent.Status]
 
 	if !exists {
-		return fmt.Errorf("payment status is invalid: %v", webhookEvent.Status)
+		return fmt.Errorf("payment status is invalid: %w", webhookEvent.Status)
 	}
 
 	err := s.donationRepository.UpdateDonationPaymentFromWebhook(ctx, repository.UpdatePayment{
