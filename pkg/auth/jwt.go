@@ -52,7 +52,13 @@ func ValidateToken(tokenString string) (int, error) {
 	}
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		userID := int(claims["user_id"].(float64))
+		rawUserID, ok := claims["user_id"].(float64)
+
+		if !ok {
+			return 0, errors.New("invalid user id")
+		}
+
+		userID := int(rawUserID)
 		return userID, nil
 	}
 

@@ -12,11 +12,36 @@ type Config struct {
 	Database DatabaseConfig
 }
 
+func (c *Config) Validate() error {
+	if c.App.Port == "" {
+		return fmt.Errorf("APP PORT is required")
+	}
+
+	if c.Database.URL == "" {
+		return fmt.Errorf("DATABASE URL is required")
+	}
+
+	if c.App.JwtSecret == "" {
+		return fmt.Errorf("JWT secret is required")
+	}
+
+	if c.App.Service.Payment.Vendor != "xendit" {
+		return fmt.Errorf("only xendit payment gateway is currently supported")
+	}
+
+	if c.App.Service.Payment.SecretKey == "" {
+		return fmt.Errorf("Secret key is required")
+	}
+
+	return nil
+}
+
 type AppConfig struct {
-	Port    string
-	URL     string
-	ENV     string
-	Service ServiceConfig
+	Port      string
+	URL       string
+	ENV       string
+	Service   ServiceConfig
+	JwtSecret string
 }
 
 type ServiceConfig struct {
@@ -34,15 +59,14 @@ type DatabaseConfig struct {
 }
 
 func Load() (*Config, error) {
-	if err := godotenv.Load(".env"); err != nil {
-		return nil, fmt.Errorf("error loading .env file: %v", err)
-	}
+	_ = godotenv.Load(".env")
 
 	return &Config{
 		App: AppConfig{
-			Port: getEnv("APP_PORT", "3030"),
-			URL:  getEnv("APP_URL", "http://localhost:3030"),
-			ENV:  getEnv("APP_ENV", "development"),
+			Port:      getEnv("APP_PORT", ""),
+			URL:       getEnv("APP_URL", ""),
+			ENV:       getEnv("APP_ENV", "development"),
+			JwtSecret: getEnv("JWT_SECRET", ""),
 			Service: ServiceConfig{
 				Payment: PaymentConfig{
 					Vendor:    getEnv("PAYMENT_VENDOR", "xendit"),
@@ -51,7 +75,7 @@ func Load() (*Config, error) {
 			},
 		},
 		Database: DatabaseConfig{
-			URL:  getEnv("DATABASE_URL", "postgres://user:pass@localhost:5432/dbname"),
+			URL:  getEnv("DATABASE_URL", ""),
 			Type: getEnv("DATABASE_TYPE", "postgres"),
 		},
 	}, nil

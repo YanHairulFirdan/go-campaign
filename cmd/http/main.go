@@ -25,12 +25,17 @@ func main() {
 
 func run() error {
 	c := make(chan os.Signal, 1)
+	serverErr := make(chan error, 1)
 	signal.Notify(c, os.Interrupt)
 
 	cfg, err := config.Load()
 
 	if err != nil {
-		return fmt.Errorf("error loading config: %v", err)
+		return fmt.Errorf("error loading config: %w", err)
+	}
+
+	if err := cfg.Validate(); err != nil {
+		return fmt.Errorf("failed to validate the configuration: %w", err)
 	}
 
 	deps, err := setupDependencies(cfg)
@@ -44,16 +49,22 @@ func run() error {
 
 	defer deps.Close()
 
-	app := setupApp(deps)
+	app, err := setupApp(deps)
+
+	if err != nil {
+		return fmt.Errorf("failed to setup the application: %w", err)
+	}
 
 	go func() {
-		if err := app.Listen(port); err != nil {
-			log.Printf("error starting server: %v", err)
-		}
+		serverErr <- app.Listen(port)
 	}()
 
-	<-c
-	log.Println("Gracefully shutting down...")
+	select {
+	case <-c:
+		log.Println("Gracefully shutting down...")
+	case err := <-serverErr:
+		return fmt.Errorf("start server: %w", err)
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -93,7 +104,7 @@ func setupDependencies(cfg *config.Config) (*Dependencies, error) {
 	}, nil
 }
 
-func setupApp(deps *Dependencies) *fiber.App {
+func setupApp(deps *Dependencies) (*fiber.App, error) {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
@@ -111,7 +122,11 @@ func setupApp(deps *Dependencies) *fiber.App {
 	app.Use(middleware.RateLimiter())
 	app.Static("/", "./public")
 
-	infrastructure.RegisterRoute(app, deps.DB)
+	err := infrastructure.RegisterRoute(app, deps.DB, *deps.Config)
 
-	return app
+	if err != nil {
+		return nil, err
+	}
+
+	return app, nil
 }
