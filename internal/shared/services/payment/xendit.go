@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/xendit/xendit-go/v7"
@@ -55,16 +54,14 @@ func (r *XenditInvoiceWebhookResponse) ToJson() (string, error) {
 	return string(jsonData), nil
 }
 
-func NewXendit() *xenditPaymentGateway {
-	secretKey := os.Getenv("PAYMENT_SECRET_KEY")
-
+func NewXendit(secretKey string) (*xenditPaymentGateway, error) {
 	if secretKey == "" {
-		panic("PAYMENT_SECRET_KEY environment variable is not set")
+		return nil, fmt.Errorf("payment secret key is missing")
 	}
 
 	return &xenditPaymentGateway{
 		client: xendit.NewClient(secretKey),
-	}
+	}, nil
 }
 
 // CreateRequest creates a payment request using Xendit.
@@ -93,6 +90,9 @@ func (x *xenditPaymentGateway) CreateInvoice(request InvoiceRequest) (string, er
 		Execute()
 
 	if err != nil {
+		if r == nil {
+			return "", fmt.Errorf("failed to retrieve response from xendit payment: %w", err)
+		}
 		var sdkErr *common.XenditSdkError
 
 		if errors.As(err, &sdkErr) {

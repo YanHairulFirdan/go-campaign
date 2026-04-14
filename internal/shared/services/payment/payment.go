@@ -58,6 +58,6 @@ type PaymentGateway interface {
 	CreateInvoice(request InvoiceRequest) (string, error) // Returns a payment URL or ID
 }
 
-func New() PaymentGateway {
-	return NewXendit()
+func New(secrectKey string) (PaymentGateway, error) {
+	return NewXendit(secrectKey)
 }

@@ -2,6 +2,7 @@ package payment
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	"github.com/google/uuid"
@@ -15,7 +16,7 @@ func TestCreateXenditTransaction(t *testing.T) {
 		t.Fatalf("Error loading .env file: %v", err)
 	}
 
-	x := NewXendit()
+	x, _ := NewXendit(os.Getenv("PAYMENT_SECRET_KEY"))
 	request := InvoiceRequest{
 		ExternalID: uuid.New(),
 		Amount:     30000,
