@@ -5,8 +5,8 @@ import (
 	"go-campaign.com/internal/shared/http/middleware"
 )
 
-func RegisterRouteV1(apiV1 fiber.Router) {
-	uploadGroup := apiV1.Group("/images", middleware.Protected(), middleware.ExtractToken)
-	uploadGroup.Post("/upload", Upload)
-	uploadGroup.Delete("/delete", Delete)
+func RegisterRoute(router fiber.Router, handler *ImageHandler) {
+	uploadGroup := router.Group("/images", middleware.Protected(), middleware.ExtractToken)
+	uploadGroup.Post("/upload", handler.Upload)
+	uploadGroup.Delete("/delete", handler.Delete)
 }

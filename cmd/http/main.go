@@ -12,14 +12,20 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/logger"
 	_ "github.com/lib/pq"
+	"go-campaign.com/internal/app"
+	"go-campaign.com/internal/campaign"
 	"go-campaign.com/internal/config"
+	"go-campaign.com/internal/image"
 	"go-campaign.com/internal/infrastructure"
 	"go-campaign.com/internal/shared/http/middleware"
+	"go-campaign.com/internal/shared/services/payment"
+	"go-campaign.com/internal/user"
+	"go-campaign.com/pkg/filesystem"
 )
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("Application error: %v", err)
+		log.Fatalf("Application error: %w", err)
 	}
 }
 
@@ -41,19 +47,21 @@ func run() error {
 	deps, err := setupDependencies(cfg)
 
 	if err != nil {
-		return fmt.Errorf("error setting up dependencies: %v", err)
+		return fmt.Errorf("error setting up dependencies: %w", err)
 	}
 
 	port := cfg.App.Port
 	log.Printf("Starting server on port %s in %s mode...", port, cfg.App.ENV)
 
-	defer deps.Close()
+	defer deps.CloseDatabaseConnection()
 
 	app, err := setupApp(deps)
 
 	if err != nil {
 		return fmt.Errorf("failed to setup the application: %w", err)
 	}
+
+	setupModule(app, deps)
 
 	go func() {
 		serverErr <- app.Listen(port)
@@ -70,7 +78,7 @@ func run() error {
 	defer cancel()
 
 	if err := app.ShutdownWithContext(ctx); err != nil {
-		log.Printf("server shutdown error: %v", err)
+		log.Printf("server shutdown error: %w", err)
 	}
 
 	return nil
@@ -89,22 +97,31 @@ func (d *Dependencies) Close() error {
 	return nil
 }
 
-func setupDependencies(cfg *config.Config) (*Dependencies, error) {
+func setupDependencies(cfg *config.Config) (*app.Dependencies, error) {
 	db, err := infrastructure.InitDatabaseConnection(cfg)
 
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to the database: %v", err)
+		return nil, fmt.Errorf("error connecting to the database: %w", err)
 	}
 
 	infrastructure.InitValidation(db)
 
-	return &Dependencies{
-		DB:     db,
-		Config: cfg,
+	fsystem := filesystem.NewLocalFileSystem()
+	paymentGateway, err := payment.New(cfg.App.Service.Payment.SecretKey)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &app.Dependencies{
+		DB:             db,
+		Config:         cfg,
+		FileSystem:     fsystem,
+		PaymentGateway: paymentGateway,
 	}, nil
 }
 
-func setupApp(deps *Dependencies) (*fiber.App, error) {
+func setupApp(deps *app.Dependencies) (*fiber.App, error) {
 	app := fiber.New(fiber.Config{
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
@@ -122,11 +139,19 @@ func setupApp(deps *Dependencies) (*fiber.App, error) {
 	app.Use(middleware.RateLimiter())
 	app.Static("/", "./public")
 
-	err := infrastructure.RegisterRoute(app, deps.DB, *deps.Config)
+	return app, nil
+}
 
-	if err != nil {
-		return nil, err
+func setupModule(fiberApp *fiber.App, deps *app.Dependencies) {
+	modules := []app.Bootable{
+		campaign.Boot,
+		user.Boot,
+		image.Boot,
 	}
 
-	return app, nil
+	v1 := fiberApp.Group("api/v1")
+
+	for _, module := range modules {
+		module(v1, deps)
+	}
 }

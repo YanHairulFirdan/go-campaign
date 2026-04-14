@@ -14,7 +14,15 @@ import (
 	"go-campaign.com/pkg/filesystem"
 )
 
-func Upload(c *fiber.Ctx) error {
+type ImageHandler struct {
+	filesystem filesystem.Filesystem
+}
+
+func NewImageHandler(filesystem filesystem.Filesystem) *ImageHandler {
+	return &ImageHandler{filesystem: filesystem}
+}
+
+func (h *ImageHandler) Upload(c *fiber.Ctx) error {
 	module := c.FormValue("module", "default")
 
 	config, exists := availableModules[module]
@@ -56,9 +64,7 @@ func Upload(c *fiber.Ctx) error {
 
 	physicalUploadDir := fmt.Sprintf("./public/%s", uploadDir)
 
-	fsystem := filesystem.NewLocalFileSystem()
-
-	if err := fsystem.CreateDirectory(c.Context(), physicalUploadDir); err != nil {
+	if err := h.filesystem.CreateDirectory(c.Context(), physicalUploadDir); err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			response.NewErrorResponse(
 				"error",
@@ -93,7 +99,7 @@ func Upload(c *fiber.Ctx) error {
 		)
 	}
 
-	uploadedImages, err := uploadImages(c.Context(), fsystem, uploadDir, physicalUploadDir, baseFileURL, images)
+	uploadedImages, err := h.uploadImages(c.Context(), uploadDir, physicalUploadDir, baseFileURL, images)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(
@@ -116,7 +122,7 @@ func Upload(c *fiber.Ctx) error {
 	)
 }
 
-func Delete(c *fiber.Ctx) error {
+func (h *ImageHandler) Delete(c *fiber.Ctx) error {
 	// get base file URL from environment variable
 	baseFileURL := os.Getenv("BASE_FILE_URL")
 	if baseFileURL == "" {
@@ -189,9 +195,8 @@ func validateUploadedImages(config UploadConfig, images []*multipart.FileHeader)
 	return errors
 }
 
-func uploadImages(
+func (h *ImageHandler) uploadImages(
 	ctx context.Context,
-	fsystem filesystem.Filesystem,
 	uploadDir,
 	absoluteDir,
 	baseFileURL string,
@@ -202,7 +207,7 @@ func uploadImages(
 	for _, image := range images {
 		filename := generateFileName(image.Filename)
 
-		err := saveUploadedImage(ctx, fsystem, image, fmt.Sprintf("%s/%s", absoluteDir, filename))
+		err := h.saveUploadedImage(ctx, image, fmt.Sprintf("%s/%s", absoluteDir, filename))
 
 		if err != nil {
 			return nil, err
@@ -214,7 +219,7 @@ func uploadImages(
 	return uploaded, nil
 }
 
-func saveUploadedImage(ctx context.Context, fsystem filesystem.Filesystem, image *multipart.FileHeader, path string) error {
+func (h *ImageHandler) saveUploadedImage(ctx context.Context, image *multipart.FileHeader, path string) error {
 	src, err := image.Open()
 
 	if err != nil {
@@ -223,7 +228,7 @@ func saveUploadedImage(ctx context.Context, fsystem filesystem.Filesystem, image
 
 	defer src.Close()
 
-	return fsystem.SaveFile(ctx, src, path)
+	return h.filesystem.SaveFile(ctx, src, path)
 }
 
 func generateFileName(originalName string) string {
