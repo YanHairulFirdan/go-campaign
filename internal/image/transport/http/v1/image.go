@@ -1,13 +1,17 @@
 package v1
 
 import (
+	"context"
 	"fmt"
+	"mime/multipart"
 	"os"
+	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/google/uuid"
 	"go-campaign.com/internal/shared/http/response"
+	"go-campaign.com/pkg/filesystem"
 )
 
 func Upload(c *fiber.Ctx) error {
@@ -36,7 +40,9 @@ func Upload(c *fiber.Ctx) error {
 		)
 	}
 
-	if len(files.File) == 0 {
+	images := files.File[config.inputField]
+
+	if len(images) == 0 {
 		return c.Status(fiber.StatusBadRequest).JSON(
 			response.NewErrorResponse(
 				"error",
@@ -50,56 +56,19 @@ func Upload(c *fiber.Ctx) error {
 
 	physicalUploadDir := fmt.Sprintf("./public/%s", uploadDir)
 
-	if _, err := os.Stat(physicalUploadDir); os.IsNotExist(err) {
-		if err := os.MkdirAll(physicalUploadDir, os.ModePerm); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(
-				response.NewErrorResponse(
-					"error",
-					"Failed to create upload directory",
-					err.Error(),
-				),
-			)
-		}
+	fsystem := filesystem.NewLocalFileSystem()
+
+	if err := fsystem.CreateDirectory(c.Context(), physicalUploadDir); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Failed to create upload directory",
+				err.Error(),
+			),
+		)
 	}
 
-	images := files.File["images"]
-
-	uploadedImages := make([]string, 0, len(images))
-	validationErrors := map[string]string{}
-	baseFileURL := os.Getenv("BASE_FILE_URL")
-
-	for index, fileHeader := range images {
-		errors := Validate(config, fileHeader)
-		if errors != "" {
-			return c.Status(fiber.StatusInternalServerError).JSON(
-				response.NewErrorResponse(
-					"error",
-					"Failed to validate image",
-					errors,
-				),
-			)
-		}
-		if len(errors) > 0 {
-			validationErrors[fmt.Sprintf("image.%d", index)] = errors
-			continue
-		}
-
-		extension := strings.ToLower(fileHeader.Filename[strings.LastIndex(fileHeader.Filename, "."):])
-
-		fileHeader.Filename = fmt.Sprintf("%d%s", time.Now().UnixNano(), extension)
-
-		if err := c.SaveFile(fileHeader, fmt.Sprintf("%s/%s", physicalUploadDir, fileHeader.Filename)); err != nil {
-			return c.Status(fiber.StatusInternalServerError).JSON(
-				response.NewErrorResponse(
-					"error",
-					"Failed to save image",
-					err.Error(),
-				),
-			)
-		}
-
-		uploadedImages = append(uploadedImages, fmt.Sprintf("%s/%s/%s", baseFileURL, uploadDir, fileHeader.Filename))
-	}
+	validationErrors := validateUploadedImages(config, images)
 
 	if len(validationErrors) > 0 {
 		validationErrorsSlice := []map[string]string{validationErrors}
@@ -108,6 +77,30 @@ func Upload(c *fiber.Ctx) error {
 				"error",
 				"Validation failed",
 				validationErrorsSlice,
+			),
+		)
+	}
+
+	baseFileURL := os.Getenv("BASE_FILE_URL")
+
+	if baseFileURL == "" {
+		return c.Status(fiber.StatusInternalServerError).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Base file URL not set",
+				"Please set the BASE_FILE_URL environment variable",
+			),
+		)
+	}
+
+	uploadedImages, err := uploadImages(c.Context(), fsystem, uploadDir, physicalUploadDir, baseFileURL, images)
+
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(
+			response.NewErrorResponse(
+				"error",
+				"Failed to save image",
+				err.Error(),
 			),
 		)
 	}
@@ -182,4 +175,59 @@ func Delete(c *fiber.Ctx) error {
 			},
 		),
 	)
+}
+
+func validateUploadedImages(config UploadConfig, images []*multipart.FileHeader) map[string]string {
+	var errors = make(map[string]string)
+
+	for index, image := range images {
+		if err := Validate(config, image); err != "" {
+			errors[fmt.Sprintf("image.%d", index)] = err
+		}
+	}
+
+	return errors
+}
+
+func uploadImages(
+	ctx context.Context,
+	fsystem filesystem.Filesystem,
+	uploadDir,
+	absoluteDir,
+	baseFileURL string,
+	images []*multipart.FileHeader,
+) ([]string, error) {
+	var uploaded = make([]string, 0, len(images))
+
+	for _, image := range images {
+		filename := generateFileName(image.Filename)
+
+		err := saveUploadedImage(ctx, fsystem, image, fmt.Sprintf("%s/%s", absoluteDir, filename))
+
+		if err != nil {
+			return nil, err
+		}
+
+		uploaded = append(uploaded, fmt.Sprintf("%s/%s/%s", baseFileURL, uploadDir, filename))
+	}
+
+	return uploaded, nil
+}
+
+func saveUploadedImage(ctx context.Context, fsystem filesystem.Filesystem, image *multipart.FileHeader, path string) error {
+	src, err := image.Open()
+
+	if err != nil {
+		return err
+	}
+
+	defer src.Close()
+
+	return fsystem.SaveFile(ctx, src, path)
+}
+
+func generateFileName(originalName string) string {
+	ext := strings.ToLower(filepath.Ext(originalName))
+
+	return fmt.Sprintf("%s%s", uuid.NewString(), ext)
 }
