@@ -9,7 +9,7 @@ import (
 	v1 "go-campaign.com/internal/campaign/transport/http/v1"
 )
 
-func Boot(router fiber.Router, deps *app.Dependencies) {
+func BootHttpV1(router fiber.Router, deps *app.Dependencies) {
 	q := sqlc.New(deps.DB) // Now using the shared repository package
 	donationRepository := postgres.NewDonationRepository(deps.DB, q)
 	campaignRepository := postgres.NewCampaignRepository(q)

@@ -144,9 +144,9 @@ func setupApp(deps *app.Dependencies) (*fiber.App, error) {
 
 func setupModule(fiberApp *fiber.App, deps *app.Dependencies) {
 	modules := []app.Bootable{
-		campaign.Boot,
-		user.Boot,
-		image.Boot,
+		campaign.BootHttpV1,
+		user.BootHttpV1,
+		image.BootHttpV1,
 	}
 
 	v1 := fiberApp.Group("api/v1")
