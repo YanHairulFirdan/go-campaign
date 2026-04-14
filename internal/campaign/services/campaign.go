@@ -27,10 +27,10 @@ func NewCampaignService(
 	}
 }
 
-func (s *CampaignService) GetCampaigns(ctx context.Context, page, perPage int32) ([]repository.CampaignList, int, error) {
+func (s *CampaignService) GetCampaigns(ctx context.Context, offset, limit int32) ([]repository.CampaignList, int, error) {
 	campaigns, err := s.campaignRepository.GetPaginatedCampaigns(ctx, request.PaginationRequest{
-		Page:  page,
-		Limit: perPage,
+		Offset: offset,
+		Limit:  limit,
 	})
 
 	if err != nil {

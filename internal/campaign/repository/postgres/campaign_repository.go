@@ -27,7 +27,7 @@ func NewCampaignRepository(sqlc *sqlc.Queries) *CampaignRepository {
 func (r *CampaignRepository) GetPaginatedCampaigns(ctx context.Context, req request.PaginationRequest) ([]repository.CampaignList, error) {
 	campaigns, err := r.sqlc.GetCampaigns(ctx, sqlc.GetCampaignsParams{
 		Limit:  req.Limit,
-		Offset: req.Page,
+		Offset: req.Offset,
 	})
 
 	if err != nil {
@@ -66,6 +66,7 @@ func (r *CampaignRepository) GetCampaignBySlug(ctx context.Context, slug string)
 
 	return &repository.DetailCampaign{
 		ID:            c.ID,
+		UserID:        c.UserID,
 		Title:         c.Title,
 		Description:   c.Description,
 		Slug:          c.Slug,

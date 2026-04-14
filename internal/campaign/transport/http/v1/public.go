@@ -17,14 +17,17 @@ import (
 
 type publicHandler struct {
 	s      *services.CampaignService
-	config config.Config
+	config *config.Config
 }
 
 func NewPublicHandler(
 	s *services.CampaignService,
+	c *config.Config,
+
 ) *publicHandler {
 	return &publicHandler{
-		s: s,
+		s:      s,
+		config: c,
 	}
 }
 
@@ -40,7 +43,11 @@ func (h *publicHandler) Index(c *fiber.Ctx) error {
 		perPage = 10
 	}
 
-	campaigns, totalCount, err := h.s.GetCampaigns(c.Context(), int32(page), int32(perPage))
+	campaigns, totalCount, err := h.s.GetCampaigns(
+		c.Context(),
+		(int32(page)-1)*int32(perPage),
+		int32(perPage),
+	)
 
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(
@@ -127,7 +134,7 @@ func (h *publicHandler) Donate(c *fiber.Ctx) error {
 		)
 	}
 
-	if userID == int(campaign.ID) {
+	if userID == int(campaign.UserID) {
 		return c.Status(fiber.StatusBadRequest).JSON(
 			response.NewErrorResponse(
 				"error",

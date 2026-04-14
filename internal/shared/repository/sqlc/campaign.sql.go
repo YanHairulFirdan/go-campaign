@@ -265,6 +265,7 @@ func (q *Queries) FindCampaignsBySlugForUpdate(ctx context.Context, slug string)
 const getCampaignBySlug = `-- name: GetCampaignBySlug :one
 SELECT 
 campaigns.id, 
+campaigns.user_id as user_id, 
 campaigns.title, 
 campaigns.description, 
 campaigns.slug, 
@@ -285,6 +286,7 @@ WHERE campaigns.slug = $1
 
 type GetCampaignBySlugRow struct {
 	ID            int32     `json:"id"`
+	UserID        int32     `json:"user_id"`
 	Title         string    `json:"title"`
 	Description   *string   `json:"description"`
 	Slug          string    `json:"slug"`
@@ -303,6 +305,7 @@ func (q *Queries) GetCampaignBySlug(ctx context.Context, slug string) (GetCampai
 	var i GetCampaignBySlugRow
 	err := row.Scan(
 		&i.ID,
+		&i.UserID,
 		&i.Title,
 		&i.Description,
 		&i.Slug,
@@ -479,7 +482,7 @@ const getPaginatedUserCampaign = `-- name: GetPaginatedUserCampaign :many
 SELECT id, title, images,
 	   CASE 
 		   WHEN current_amount = 0 THEN 0 
-		   ELSE target_amount / current_amount 
+		   ELSE current_amount / target_amount  * 100
 	   END::DECIMAL(10, 2) AS progress, 
 	   start_date, end_date, status,
 	   CASE
@@ -588,7 +591,7 @@ SELECT COUNT(*) AS total
 FROM campaigns
 WHERE 
 	deleted_at IS NULL AND
-	status = 1 AND
+	status = 2 AND
 	start_date <= CURRENT_TIMESTAMP AND
 	end_date >= CURRENT_TIMESTAMP
 `

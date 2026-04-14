@@ -7,11 +7,12 @@ import (
 	"go-campaign.com/internal/campaign/repository/postgres"
 	"go-campaign.com/internal/campaign/repository/sqlc"
 	"go-campaign.com/internal/campaign/services"
+	"go-campaign.com/internal/config"
 	"go-campaign.com/internal/shared/http/middleware"
 	"go-campaign.com/internal/shared/services/payment"
 )
 
-func RegisterRouteV1(router fiber.Router, db *sql.DB) {
+func RegisterRouteV1(router fiber.Router, db *sql.DB, config config.Config) error {
 
 	q := sqlc.New(db) // Now using the shared repository package
 	donationRepository := postgres.NewDonationRepository(db, q)
@@ -19,7 +20,21 @@ func RegisterRouteV1(router fiber.Router, db *sql.DB) {
 
 	userService := services.NewUserCampaignService(q)
 	userHandler := NewHandler(userService)
-	publicHandler := NewPublicHandler(services.NewCampaignService(payment.New(), donationRepository, campaignRepository))
+
+	paymentGateway, err := payment.New(config.App.Service.Payment.SecretKey)
+
+	if err != nil {
+		return err
+	}
+
+	publicHandler := NewPublicHandler(
+		services.NewCampaignService(
+			paymentGateway,
+			donationRepository,
+			campaignRepository,
+		),
+		&config,
+	)
 
 	routeGroup := router.Group("/user/campaigns", middleware.Protected(), middleware.ExtractToken)
 
@@ -35,4 +50,6 @@ func RegisterRouteV1(router fiber.Router, db *sql.DB) {
 	publicCampaign.Get("/:slug/donaturs", publicHandler.Donatur)
 
 	publicCampaign.Post("/xendit/callback", publicHandler.XenditWebhookCallback)
+
+	return nil
 }
