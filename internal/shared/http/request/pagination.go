@@ -1,6 +1,6 @@
 package request
 
 type PaginationRequest struct {
-	Page  int32
-	Limit int32
+	Offset int32
+	Limit  int32
 }
