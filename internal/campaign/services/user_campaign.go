@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
 	"time"
@@ -20,14 +21,23 @@ func NewUserCampaignService(q *sqlc.Queries) *UserCampaignService {
 }
 
 func (s *UserCampaignService) GetPaginatedUserCampaigns(ctx context.Context, request PaginatedCampaignRequest) ([]sqlc.GetPaginatedUserCampaignRow, int64, error) {
+	title := sql.NullString{
+		String: request.Title,
+		Valid:  request.Title != "",
+	}
+	status := sql.NullInt32{
+		Int32: request.Status,
+		Valid: request.Status != 0,
+	}
+
 	campaigns, err := s.q.GetPaginatedUserCampaign(
 		ctx,
 		sqlc.GetPaginatedUserCampaignParams{
 			UserID: request.UserID,
 			Limit:  request.Limit,
 			Offset: request.Offset,
-			Title:  request.Title,
-			Status: request.Status,
+			Title:  title,
+			Status: status,
 		},
 	)
 
@@ -37,8 +47,8 @@ func (s *UserCampaignService) GetPaginatedUserCampaigns(ctx context.Context, req
 
 	totalCount, err := s.q.GetTotalUserCampaigns(ctx, sqlc.GetTotalUserCampaignsParams{
 		UserID: request.UserID,
-		Title:  request.Title,
-		Status: request.Status,
+		Title:  title,
+		Status: status,
 	})
 
 	if err != nil {
