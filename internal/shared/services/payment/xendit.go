@@ -96,10 +96,10 @@ func (x *xenditPaymentGateway) CreateInvoice(request InvoiceRequest) (string, er
 		var sdkErr *common.XenditSdkError
 
 		if errors.As(err, &sdkErr) {
-			return "", fmt.Errorf("xendit SDK error: %s, HTTP status: %d, Response: %w", sdkErr.Error(), r.StatusCode, sdkErr)
+			return "", fmt.Errorf("xendit SDK error: %s, HTTP status: %d, Response: %v", sdkErr.Error(), r.StatusCode, sdkErr)
 		}
 
-		return "", fmt.Errorf("failed to create Xendit invoice: %v, HTTP status: %d, Response: %w", err, r.StatusCode, r.Body)
+		return "", fmt.Errorf("failed to create Xendit invoice: %v, HTTP status: %d, Response: %v", err, r.StatusCode, r.Body)
 	}
 
 	return resp.InvoiceUrl, nil
