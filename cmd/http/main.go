@@ -146,7 +146,6 @@ func setupApp(deps *app.Dependencies) (*fiber.App, error) {
 func setupModule(fiberApp *fiber.App, deps *app.Dependencies) {
 	modules := []app.Bootable{
 		campaign.BootHttpV1,
-		user.BootHttpV1,
 	}
 
 	v1 := fiberApp.Group("api/v1")
@@ -154,6 +153,10 @@ func setupModule(fiberApp *fiber.App, deps *app.Dependencies) {
 	for _, module := range modules {
 		module(v1, deps)
 	}
+
+	user.BootHttpV1(v1, user.HTTPDeps{
+		DB: deps.DB,
+	})
 
 	image.BootHttpV1(v1, image.HTTPDeps{
 		FileSystem: deps.FileSystem,
