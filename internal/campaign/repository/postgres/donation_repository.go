@@ -147,6 +147,10 @@ func (r *DonationRepository) UpdateDonationPaymentFromWebhook(ctx context.Contex
 		_ = tx.Rollback()
 	}()
 
+	if err := uuid.Validate(req.ExternalID); err != nil {
+		return fmt.Errorf("invalid uuid: %w", err)
+	}
+
 	payment, err := r.sqlc.FindAndLockPaymentForUpdate(ctx, uuid.MustParse(req.ExternalID))
 
 	if err != nil {
