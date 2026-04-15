@@ -8,7 +8,13 @@ import (
 func RegisterRoute(router fiber.Router, userHandler *handler, publicHandler *publicHandler) error {
 	routeGroup := router.Group("/user/campaigns", middleware.Protected(), middleware.ExtractToken)
 
-	routeGroup.Get("/", userHandler.Index)
+	routeGroup.Get("/",
+		middleware.PaginationQueryNormalizer(middleware.QueryNormalization{
+			"page":     1,
+			"per_page": 10,
+		}),
+		userHandler.Index,
+	)
 	routeGroup.Post("/", userHandler.Create)
 	routeGroup.Get("/:id", userHandler.Show)
 	routeGroup.Put("/:id", userHandler.Update)
