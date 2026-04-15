@@ -28,7 +28,7 @@ func (h *paymentHandler) GetDetailPayment(ctx *fiber.Ctx) error {
 	transactionID, err := uuid.Parse(ctx.Params("transaction"))
 
 	if err != nil {
-		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+		return ctx.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error": fmt.Sprintf("failed to parse id: %v", err),
 		})
 	}
