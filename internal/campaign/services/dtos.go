@@ -9,7 +9,7 @@ import (
 type PaginatedCampaignRequest struct {
 	UserID int32
 	Limit  int32
-	Page   int32
+	Offset int32
 	Title  string
 	Status int32
 }

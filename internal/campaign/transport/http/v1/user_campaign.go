@@ -35,6 +35,7 @@ func (h *handler) Index(c *fiber.Ctx) error {
 		c.Context(), services.PaginatedCampaignRequest{
 			UserID: int32(userID),
 			Limit:  int32(perPage),
+			Offset: int32((page - 1) * perPage),
 			Title:  title,
 			Status: int32(status),
 		})
