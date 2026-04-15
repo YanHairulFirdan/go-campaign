@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"go-campaign.com/internal/campaign/entities"
 	"go-campaign.com/internal/campaign/services"
 	"go-campaign.com/internal/shared/http/response"
 	"go-campaign.com/pkg/validation"
@@ -30,7 +29,7 @@ func (h *handler) Index(c *fiber.Ctx) error {
 	perPage := c.QueryInt("per_page", 10)
 
 	title := c.Query("title", "")
-	status := c.QueryInt("status", int(entities.StatusDraft))
+	status := c.QueryInt("status", 0)
 	campaigns, totalCount, err := h.s.GetPaginatedUserCampaigns(
 		c.Context(), services.PaginatedCampaignRequest{
 			UserID: int32(userID),
