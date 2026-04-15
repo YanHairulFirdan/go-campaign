@@ -99,7 +99,7 @@ func (x *xenditPaymentGateway) CreateInvoice(request InvoiceRequest) (string, er
 			return "", fmt.Errorf("xendit SDK error: %s, HTTP status: %d, Response: %w", sdkErr.Error(), r.StatusCode, sdkErr)
 		}
 
-		return "", fmt.Errorf("failed to create Xendit invoice: %w, HTTP status: %d, Response: %w", err, r.StatusCode, r.Body)
+		return "", fmt.Errorf("failed to create Xendit invoice: %v, HTTP status: %d, Response: %w", err, r.StatusCode, r.Body)
 	}
 
 	return resp.InvoiceUrl, nil

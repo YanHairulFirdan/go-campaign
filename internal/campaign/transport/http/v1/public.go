@@ -213,11 +213,10 @@ func (h *publicHandler) XenditWebhookCallback(c *fiber.Ctx) error {
 	_, exists := payment.MapPaymentStatus[webhookEvent.Status]
 
 	if !exists {
-		return fmt.Errorf("payment status is invalid: %w", webhookEvent.Status)
+		return fmt.Errorf("payment status is invalid: %s", webhookEvent.Status)
 	}
 
 	if err := h.s.UpdatePaymentFromCallback(c.Context(), webhookEvent); err != nil {
-		log.Printf("Error updating payment from callback: %w", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(
 			response.NewErrorResponse(
 				"error",

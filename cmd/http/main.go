@@ -26,7 +26,7 @@ import (
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("Application error: %w", err)
+		log.Fatalf("Application error: %v", err)
 	}
 }
 
@@ -79,7 +79,7 @@ func run() error {
 	defer cancel()
 
 	if err := app.ShutdownWithContext(ctx); err != nil {
-		log.Printf("server shutdown error: %w", err)
+		log.Printf("server shutdown error: %v", err)
 	}
 
 	return nil

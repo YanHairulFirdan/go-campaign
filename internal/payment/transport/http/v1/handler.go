@@ -29,7 +29,7 @@ func (h *paymentHandler) GetDetailPayment(ctx *fiber.Ctx) error {
 
 	if err != nil {
 		return ctx.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-			"error": fmt.Sprintf("failed to parse id: %w", err),
+			"error": fmt.Sprintf("failed to parse id: %v", err),
 		})
 	}
 
