@@ -16,8 +16,8 @@ FROM campaigns
 WHERE 
 	user_id = $1 AND
 	deleted_at IS NULL AND
-	title ILIKE '%' || sqlc.arg(title)::text || '%' AND
-	status = sqlc.arg(status)::integer
+	(sqlc.narg('title')::text IS NULL OR title ILIKE '%' || sqlc.narg('title')::text || '%') AND
+    (sqlc.narg('status')::integer IS NULL OR status = sqlc.narg('status')::integer)
 ORDER BY start_date DESC
 LIMIT $2 OFFSET $3;
 
@@ -27,8 +27,8 @@ FROM campaigns
 WHERE 
 	user_id = $1 AND
 	deleted_at IS NULL AND
-	title ILIKE '%' || sqlc.arg(title)::text || '%' AND
-	status = sqlc.arg(status)::integer;
+	(sqlc.narg('title')::text IS NULL OR title ILIKE '%' || sqlc.narg('title')::text || '%') AND
+    (sqlc.narg('status')::integer IS NULL OR status = sqlc.narg('status')::integer);
 
 -- name: GetUserCampaignById :one
 SELECT id, title, description, slug, user_id, target_amount, current_amount, start_date, end_date, status, images,

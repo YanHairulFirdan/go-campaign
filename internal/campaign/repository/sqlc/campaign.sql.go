@@ -497,18 +497,18 @@ FROM campaigns
 WHERE 
 	user_id = $1 AND
 	deleted_at IS NULL AND
-	title ILIKE '%' || $4::text || '%' AND
-	status = $5::integer
+	($4::text IS NULL OR title ILIKE '%' || $4::text || '%') AND
+    ($5::integer IS NULL OR status = $5::integer)
 ORDER BY start_date DESC
 LIMIT $2 OFFSET $3
 `
 
 type GetPaginatedUserCampaignParams struct {
-	UserID int32  `json:"user_id"`
-	Limit  int32  `json:"limit"`
-	Offset int32  `json:"offset"`
-	Title  string `json:"title"`
-	Status int32  `json:"status"`
+	UserID int32          `json:"user_id"`
+	Limit  int32          `json:"limit"`
+	Offset int32          `json:"offset"`
+	Title  sql.NullString `json:"title"`
+	Status sql.NullInt32  `json:"status"`
 }
 
 type GetPaginatedUserCampaignRow struct {
@@ -610,14 +610,14 @@ FROM campaigns
 WHERE 
 	user_id = $1 AND
 	deleted_at IS NULL AND
-	title ILIKE '%' || $2::text || '%' AND
-	status = $3::integer
+	($2::text IS NULL OR title ILIKE '%' || $2::text || '%') AND
+    ($3::integer IS NULL OR status = $3::integer)
 `
 
 type GetTotalUserCampaignsParams struct {
-	UserID int32  `json:"user_id"`
-	Title  string `json:"title"`
-	Status int32  `json:"status"`
+	UserID int32          `json:"user_id"`
+	Title  sql.NullString `json:"title"`
+	Status sql.NullInt32  `json:"status"`
 }
 
 func (q *Queries) GetTotalUserCampaigns(ctx context.Context, arg GetTotalUserCampaignsParams) (int64, error) {
