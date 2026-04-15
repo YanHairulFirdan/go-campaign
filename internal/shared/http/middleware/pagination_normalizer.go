@@ -14,7 +14,7 @@ func PaginationQueryNormalizer(q QueryNormalization) fiber.Handler {
 		args := ctx.Request().URI().QueryArgs()
 
 		for k, minValue := range q {
-			pageValue := strings.TrimSpace(string(args.Peek("page")))
+			pageValue := strings.TrimSpace(string(args.Peek(k)))
 
 			if pageValue != "" {
 				if num, err := strconv.Atoi(pageValue); err != nil || num < minValue {
