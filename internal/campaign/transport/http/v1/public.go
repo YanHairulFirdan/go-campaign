@@ -35,14 +35,6 @@ func (h *publicHandler) Index(c *fiber.Ctx) error {
 	page := c.QueryInt("page", 1)
 	perPage := c.QueryInt("per_page", 10)
 
-	if page <= 0 {
-		page = 1
-	}
-
-	if perPage <= 0 {
-		perPage = 10
-	}
-
 	campaigns, totalCount, err := h.s.GetCampaigns(
 		c.Context(),
 		(int32(page)-1)*int32(perPage),
