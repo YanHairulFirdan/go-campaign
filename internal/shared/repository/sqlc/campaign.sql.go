@@ -343,8 +343,8 @@ const getCampaigns = `-- name: GetCampaigns :many
 SELECT id, title, slug,
 		current_amount::numeric, target_amount::numeric,
 	   CASE 
-		   WHEN current_amount = 0 THEN 0 
-		   ELSE target_amount / current_amount 
+		   WHEN target_amount = 0 THEN 0 
+		   ELSE current_amount /target_amount * 100  
 	   END::numeric AS progress, 
 	   start_date, end_date,
 	   CASE
@@ -481,7 +481,7 @@ func (q *Queries) GetPaginatedDonaturs(ctx context.Context, arg GetPaginatedDona
 const getPaginatedUserCampaign = `-- name: GetPaginatedUserCampaign :many
 SELECT id, title, images,
 	   CASE 
-		   WHEN current_amount = 0 THEN 0 
+		   WHEN target_amount = 0 THEN 0 
 		   ELSE current_amount / target_amount  * 100
 	   END::DECIMAL(10, 2) AS progress, 
 	   start_date, end_date, status,

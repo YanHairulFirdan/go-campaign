@@ -10,6 +10,7 @@ import (
 	"database/sql"
 
 	"github.com/google/uuid"
+	"github.com/shopspring/decimal"
 )
 
 const getDetailPayment = `-- name: GetDetailPayment :one
@@ -31,19 +32,19 @@ WHERE p.transaction_id = $1
 `
 
 type GetDetailPaymentRow struct {
-	ID                  int32          `json:"id"`
-	Vendor              sql.NullString `json:"vendor"`
-	Method              sql.NullString `json:"method"`
-	Link                sql.NullString `json:"link"`
-	Status              int32          `json:"status"`
-	Amount              string         `json:"amount"`
-	PaymentDate         sql.NullTime   `json:"payment_date"`
-	DonaturID           int32          `json:"donatur_id"`
-	DonaturName         string         `json:"donatur_name"`
-	CampaignID          int32          `json:"campaign_id"`
-	CampaignTitle       string         `json:"campaign_title"`
-	CampaignDescription *string        `json:"campaign_description"`
-	Creator             string         `json:"creator"`
+	ID                  int32           `json:"id"`
+	Vendor              sql.NullString  `json:"vendor"`
+	Method              sql.NullString  `json:"method"`
+	Link                sql.NullString  `json:"link"`
+	Status              int32           `json:"status"`
+	Amount              decimal.Decimal `json:"amount"`
+	PaymentDate         sql.NullTime    `json:"payment_date"`
+	DonaturID           int32           `json:"donatur_id"`
+	DonaturName         string          `json:"donatur_name"`
+	CampaignID          int32           `json:"campaign_id"`
+	CampaignTitle       string          `json:"campaign_title"`
+	CampaignDescription sql.NullString  `json:"campaign_description"`
+	Creator             string          `json:"creator"`
 }
 
 func (q *Queries) GetDetailPayment(ctx context.Context, transactionID uuid.UUID) (GetDetailPaymentRow, error) {
