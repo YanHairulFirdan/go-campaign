@@ -17,6 +17,10 @@ type paymentRepository struct {
 
 var _ repository.PaymentRepository = (*paymentRepository)(nil)
 
+func NewPaymentRepository(q *sqlc.Queries) *paymentRepository {
+	return &paymentRepository{sqlc: q}
+}
+
 func (r *paymentRepository) GetDetailPayment(ctx context.Context, transactionID uuid.UUID) (*repository.DetailPayment, error) {
 	p, err := r.sqlc.GetDetailPayment(ctx, transactionID)
 

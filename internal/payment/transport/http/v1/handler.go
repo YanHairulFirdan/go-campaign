@@ -9,10 +9,10 @@ import (
 )
 
 type paymentHandler struct {
-	svc service.PaymentService
+	svc *service.PaymentService
 }
 
-func NewPaymentHandler(svc service.PaymentService) *paymentHandler {
+func NewPaymentHandler(svc *service.PaymentService) *paymentHandler {
 	return &paymentHandler{
 		svc: svc,
 	}

@@ -17,6 +17,7 @@ import (
 	"go-campaign.com/internal/config"
 	"go-campaign.com/internal/image"
 	"go-campaign.com/internal/infrastructure"
+	paymentModule "go-campaign.com/internal/payment"
 	"go-campaign.com/internal/shared/http/middleware"
 	"go-campaign.com/internal/shared/services/payment"
 	"go-campaign.com/internal/user"
@@ -147,6 +148,7 @@ func setupModule(fiberApp *fiber.App, deps *app.Dependencies) {
 		campaign.BootHttpV1,
 		user.BootHttpV1,
 		image.BootHttpV1,
+		paymentModule.BootHttpV1,
 	}
 
 	v1 := fiberApp.Group("api/v1")
